@@ -1,0 +1,107 @@
+server:
+  port: 8080
+  servlet:
+    context-path: /api
+
+spring:
+  application:
+    name: edumanage-platform
+
+  mail:
+    host: ${SMTP_HOST:smtp.gmail.com}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USERNAME:}
+    password: ${SMTP_APP_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/edumanage}
+    username: ${DATABASE_USERNAME:edumanage}
+    password: ${DATABASE_PASSWORD:edumanage}
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    validate-on-migrate: true
+
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    virtual-host: ${RABBITMQ_VHOST:/}
+    listener:
+      simple:
+        acknowledge-mode: auto
+        prefetch: 10
+        concurrency: 5
+        max-concurrency: 20
+
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: ${REDIS_DATABASE:0}
+    timeout: 2000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:change-me-in-production-use-a-long-random-string}
+    access-token-validity-ms: 900000
+    refresh-token-validity-ms: 604800000
+  cors:
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+  rate-limit:
+    capacity: 100
+    refill-tokens: 100
+    refill-period-seconds: 60
+  sms:
+    rate-limit:
+      max-per-minute: 60
+  notifications:
+    sms:
+      api-key: ${DARSMS_API_KEY:}
+      sender-id: ${DARSMS_SENDER_ID:}
+      base-url: ${DARSMS_BASE_URL:https://dev.darsms.co.tz/api/v1}
+    email:
+      from: ${SMTP_FROM:${SMTP_USERNAME:}}
+  encryption:
+    secret: ${ENCRYPTION_SECRET:change-me-in-production-use-a-long-random-string}
+  queues:
+    sms: sms.queue
+    sms-dead-letter: sms.dead-letter.queue
+    notifications: notifications.queue
+    reports: reports.queue
+
+logging:
+  level:
+    com.edumanage: DEBUG
+    org.springframework.security: DEBUG
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"

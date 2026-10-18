@@ -1,0 +1,27 @@
+server:
+  port: 8080
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/edumanage_dev
+    username: edumanage
+    password: edumanage
+
+  jpa:
+    show-sql: true
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        format_sql: true
+
+  flyway:
+    enabled: true
+
+app:
+  cors:
+    allowed-origins: http://localhost:5173,http://localhost:5174,http://localhost:3000

@@ -1,0 +1,30 @@
+node_modules
+dist
+build
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+coverage
+.vite
+.idea
+.vscode
+*.swp
+*.swo
+*~
+
+# EduManage: local secrets and environment files
+**/.env
+**/.env.*
+!**/.env.example
+
+# Build outputs and dependencies
+backend/target/
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+# Local backups: keep outside source control
+/backup-manager-fix-20261016-071326/
+/backup-platform-users-20261016-063548/
