@@ -10,6 +10,7 @@ import com.edumanage.studentparents.repository.StudentParentRepository;
 import com.edumanage.studentprofiles.repository.StudentProfileRepository;
 import com.edumanage.parents.repository.ParentRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,18 +25,22 @@ public class StudentParentService {
     private final StudentProfileRepository studentProfileRepository;
     private final ParentRepository parentRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public StudentParentService(StudentParentRepository studentParentRepository,
                                 StudentProfileRepository studentProfileRepository,
                                 ParentRepository parentRepository,
-                                AuditLogService auditLogService) {
+                                AuditLogService auditLogService,
+                                AccessGuard accessGuard) {
         this.studentParentRepository = studentParentRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.parentRepository = parentRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public List<StudentParentDto> listByStudent(Long studentId) {
+        accessGuard.assertCanAccessStudent(studentId);
         var student = studentProfileRepository.findById(studentId)
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
@@ -46,11 +51,18 @@ public class StudentParentService {
         }
 
         return studentParentRepository.findByStudentId(studentId).stream()
-                .map(relation -> mapToDto(relation, null, null))
+                .map(relation -> {
+                    var sp = studentProfileRepository.findById(relation.getStudentId()).orElse(null);
+                    var pp = parentRepository.findById(relation.getParentId()).orElse(null);
+                    String sn = sp == null ? null : sp.getFirstName() + " " + sp.getLastName();
+                    String pn = pp == null ? null : pp.getFirstName() + " " + pp.getLastName();
+                    return mapToDto(relation, sn, pn);
+                })
                 .collect(Collectors.toList());
     }
 
     public List<StudentParentDto> listByParent(Long parentId) {
+        accessGuard.assertCanAccessParent(parentId);
         var parent = parentRepository.findById(parentId)
                 .filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
@@ -61,12 +73,19 @@ public class StudentParentService {
         }
 
         return studentParentRepository.findByParentId(parentId).stream()
-                .map(relation -> mapToDto(relation, null, null))
+                .map(relation -> {
+                    var sp = studentProfileRepository.findById(relation.getStudentId()).orElse(null);
+                    var pp = parentRepository.findById(relation.getParentId()).orElse(null);
+                    String sn = sp == null ? null : sp.getFirstName() + " " + sp.getLastName();
+                    String pn = pp == null ? null : pp.getFirstName() + " " + pp.getLastName();
+                    return mapToDto(relation, sn, pn);
+                })
                 .collect(Collectors.toList());
     }
 
     @Transactional
     public StudentParentDto create(CreateStudentParentRequest request) {
+        accessGuard.assertAnyRole("MANAGER", "SUPER_ADMIN");
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new BadRequestException("Tenant context is required");
@@ -111,6 +130,7 @@ public class StudentParentService {
 
     @Transactional
     public StudentParentDto update(Long id, CreateStudentParentRequest request) {
+        accessGuard.assertAnyRole("MANAGER", "SUPER_ADMIN");
         var relation = studentParentRepository.findById(id)
                 .filter(r -> !r.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student-parent relation not found"));
@@ -153,6 +173,7 @@ public class StudentParentService {
 
     @Transactional
     public void delete(Long id) {
+        accessGuard.assertAnyRole("MANAGER", "SUPER_ADMIN");
         var relation = studentParentRepository.findById(id)
                 .filter(r -> !r.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student-parent relation not found"));

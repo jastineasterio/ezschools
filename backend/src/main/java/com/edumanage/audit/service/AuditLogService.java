@@ -23,9 +23,16 @@ public class AuditLogService {
     @Transactional
     public void log(String action, String entityType, Long entityId, String description,
                     String ipAddress, String userAgent, String metadata) {
+        logForSchool(action, entityType, entityId, description, ipAddress, userAgent, metadata,
+                TenantContext.getTenantId());
+    }
+
+    @Transactional
+    public void logForSchool(String action, String entityType, Long entityId, String description,
+                             String ipAddress, String userAgent, String metadata, Long schoolId) {
         AuditLog log = new AuditLog();
         log.setActorUserId(AuditAware.currentUserId());
-        log.setSchoolId(TenantContext.getTenantId());
+        log.setSchoolId(schoolId);
         log.setAction(action);
         log.setEntityType(entityType);
         log.setEntityId(entityId);
@@ -37,12 +44,20 @@ public class AuditLogService {
     }
 
     public PageResponse<AuditLogDto> getAuditLogs(Pageable pageable) {
+        return getAuditLogs(pageable, null, null, null);
+    }
+
+    public PageResponse<AuditLogDto> getAuditLogs(Pageable pageable, String search, String action, String entityType) {
         Long tenantId = TenantContext.getTenantId();
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        String normalizedAction = action == null || action.isBlank() ? null : action.trim();
+        String normalizedEntityType = entityType == null || entityType.isBlank() ? null : entityType.trim();
+
         Page<AuditLog> page;
         if (tenantId != null) {
-            page = auditLogRepository.findBySchoolId(tenantId, pageable);
+            page = auditLogRepository.findFilteredBySchoolId(tenantId, normalizedSearch, normalizedAction, normalizedEntityType, pageable);
         } else {
-            page = auditLogRepository.findAll(pageable);
+            page = auditLogRepository.findFiltered(normalizedSearch, normalizedAction, normalizedEntityType, pageable);
         }
         return PageResponse.from(page.map(this::mapToDto));
     }

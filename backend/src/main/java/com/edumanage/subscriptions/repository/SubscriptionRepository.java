@@ -13,7 +13,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface SubscriptionRepository extends JpaRepository<Subscription, Long> {
     Optional<Subscription> findByUuid(UUID uuid);
-    Optional<Subscription> findBySchoolIdAndStatus(Long schoolId, String status);
+    List<Subscription> findBySchoolIdAndStatus(Long schoolId, String status);
     List<Subscription> findBySchoolId(Long schoolId);
     Page<Subscription> findBySchoolId(Long schoolId, Pageable pageable);
     Page<Subscription> findAll(Pageable pageable);

@@ -5,9 +5,11 @@ import com.edumanage.exception.ForbiddenException;
 import com.edumanage.exception.ResourceNotFoundException;
 import com.edumanage.departments.dto.CreateDepartmentRequest;
 import com.edumanage.departments.dto.DepartmentDto;
+import com.edumanage.departments.dto.DepartmentHeadOptionDto;
 import com.edumanage.departments.entity.Department;
 import com.edumanage.departments.repository.DepartmentRepository;
 import com.edumanage.users.repository.UserRepository;
+import com.edumanage.roles.entity.Role;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
@@ -15,6 +17,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class DepartmentService {
@@ -30,15 +36,28 @@ public class DepartmentService {
         this.auditLogService = auditLogService;
     }
 
-    public PageResponse<DepartmentDto> list(Pageable pageable) {
+    public PageResponse<DepartmentDto> list(Pageable pageable, String search) {
         Long tenantId = TenantContext.getTenantId();
-        Page<Department> page;
-        if (tenantId != null) {
-            page = departmentRepository.findBySchoolId(tenantId, pageable);
-        } else {
-            page = departmentRepository.findAll(pageable);
+        if (tenantId == null && !TenantContext.isSuperAdmin()) {
+            throw new ForbiddenException("A school assignment is required");
         }
-        return PageResponse.from(page.map(dept -> mapToDto(dept, null)));
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        Page<Department> page = departmentRepository.search(tenantId, normalizedSearch, pageable);
+        return PageResponse.from(page.map(dept -> mapToDto(
+                dept, fetchHeadOfDepartmentName(dept.getHeadOfDepartmentId(), dept.getSchoolId()))));
+    }
+
+    @Transactional(readOnly = true)
+    public List<DepartmentHeadOptionDto> listEligibleHeads() {
+        Long schoolId = TenantContext.requireTenantId();
+        return userRepository.findActiveBySchoolAndRoleNames(schoolId, List.of("HOD")).stream()
+                .map(user -> new DepartmentHeadOptionDto(
+                        user.getId(),
+                        Stream.of(user.getFirstName(), user.getLastName())
+                                .filter(name -> name != null && !name.isBlank())
+                                .collect(Collectors.joining(" ")),
+                        user.getEmail()))
+                .toList();
     }
 
     public DepartmentDto getById(Long id) {
@@ -46,20 +65,15 @@ public class DepartmentService {
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(department.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(department.getSchoolId());
 
-        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId()));
+        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId(), department.getSchoolId()));
     }
 
     @Transactional
     public DepartmentDto create(CreateDepartmentRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
+        validateHeadOfDepartment(request.getHeadOfDepartmentId(), tenantId);
 
         if (departmentRepository.existsBySchoolIdAndName(tenantId, request.getName())) {
             throw new ConflictException("Department name already exists for this school");
@@ -81,7 +95,7 @@ public class DepartmentService {
         auditLogService.log("DEPARTMENT_CREATE", "Department", department.getId(),
                 "Created department " + department.getName(), null, null, null);
 
-        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId()));
+        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId(), tenantId));
     }
 
     @Transactional
@@ -90,10 +104,8 @@ public class DepartmentService {
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(department.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(department.getSchoolId());
+        validateHeadOfDepartment(request.getHeadOfDepartmentId(), department.getSchoolId());
 
         if (!department.getName().equals(request.getName()) &&
                 departmentRepository.existsBySchoolIdAndName(department.getSchoolId(), request.getName())) {
@@ -119,7 +131,7 @@ public class DepartmentService {
         auditLogService.log("DEPARTMENT_UPDATE", "Department", department.getId(),
                 "Updated department " + department.getName(), null, null, null);
 
-        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId()));
+        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId(), department.getSchoolId()));
     }
 
     @Transactional
@@ -128,10 +140,7 @@ public class DepartmentService {
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Department not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(department.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(department.getSchoolId());
 
         department.setStatus(status);
         departmentRepository.save(department);
@@ -139,14 +148,29 @@ public class DepartmentService {
         auditLogService.log("DEPARTMENT_UPDATE_STATUS", "Department", department.getId(),
                 "Updated department " + department.getName() + " status to " + status, null, null, null);
 
-        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId()));
+        return mapToDto(department, fetchHeadOfDepartmentName(department.getHeadOfDepartmentId(), department.getSchoolId()));
     }
 
-    private String fetchHeadOfDepartmentName(Long headOfDepartmentId) {
+    private void validateHeadOfDepartment(Long userId, Long schoolId) {
+        if (userId == null) {
+            return;
+        }
+        var user = userRepository.findByIdAndSchoolIdAndDeletedAtIsNull(userId, schoolId)
+                .orElseThrow(() -> new ResourceNotFoundException("Head of department not found in this school"));
+        boolean eligible = user.isActive() && user.getRoles().stream()
+                .map(Role::getName)
+                .anyMatch(roleName -> "HOD".equalsIgnoreCase(roleName));
+        if (!eligible) {
+            throw new ResourceNotFoundException("Head of department must be an active HOD in this school");
+        }
+    }
+
+    private String fetchHeadOfDepartmentName(Long headOfDepartmentId, Long schoolId) {
         if (headOfDepartmentId == null) {
             return null;
         }
         return userRepository.findById(headOfDepartmentId)
+                .filter(user -> schoolId.equals(user.getSchoolId()))
                 .map(user -> user.getFirstName() + " " + user.getLastName())
                 .orElse(null);
     }

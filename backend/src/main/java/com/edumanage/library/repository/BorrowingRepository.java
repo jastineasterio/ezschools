@@ -21,4 +21,6 @@ public interface BorrowingRepository extends JpaRepository<Borrowing, Long> {
     Optional<Borrowing> findBySchoolIdAndBookCopyIdAndStatus(Long schoolId, Long bookCopyId, String status);
     boolean existsBySchoolIdAndBookCopyIdAndStatus(Long schoolId, Long bookCopyId, String status);
     long countBySchoolIdAndMemberIdAndStatus(Long schoolId, Long memberId, String status);
+    long countBySchoolIdAndStatusAndReturnDateBetween(Long schoolId, String status, LocalDate start, LocalDate end);
+    long countBySchoolIdAndStatus(Long schoolId, String status);
 }

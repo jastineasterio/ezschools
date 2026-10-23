@@ -23,14 +23,25 @@ import {
 import type { AcademicYearResponse, CreateAcademicYearRequest } from '@/types/academic';
 import type { UpdateAcademicYearRequest } from '@/services/academic';
 import { Loader2 } from 'lucide-react';
+import { getApiErrorMessage } from '@/services/api';
 
-const academicYearSchema = z.object({
-  name: z.string().min(1, 'Name is required'),
-  startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().min(1, 'End date is required'),
-  status: z.string().optional(),
-  isCurrent: z.boolean().optional(),
-});
+const academicYearSchema = z
+  .object({
+    name: z.string().trim().min(1, 'Name is required').max(100, 'Name must be 100 characters or fewer'),
+    startDate: z.string().min(1, 'Start date is required'),
+    endDate: z.string().min(1, 'End date is required'),
+    status: z.string().optional(),
+    isCurrent: z.boolean().optional(),
+  })
+  .superRefine((value, context) => {
+    if (value.startDate && value.endDate && value.startDate > value.endDate) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['endDate'],
+        message: 'End date must be on or after the start date',
+      });
+    }
+  });
 
 type AcademicYearFormValues = z.infer<typeof academicYearSchema>;
 
@@ -40,42 +51,49 @@ export function ManagerAcademicYearsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<AcademicYearResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: queryError, refetch } = useQuery({
     queryKey: ['academic-years', page, search],
-    queryFn: () => getAcademicYears(page, 10),
+    queryFn: () => getAcademicYears(page, 10, search),
   });
 
   const createMutation = useMutation({
     mutationFn: (req: CreateAcademicYearRequest) => createAcademicYear(req),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
+      setSuccess('Academic year created.');
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to create academic year'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to create academic year')),
   });
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data: req }: { id: number; data: UpdateAcademicYearRequest }) =>
       updateAcademicYear(id, req),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
+      setSuccess('Academic year updated.');
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update academic year'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update academic year')),
   });
 
   const setCurrentMutation = useMutation({
     mutationFn: (id: number) => setCurrentAcademicYear(id),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ['academic-years'] });
+      setError(null);
+      setSuccess('Current academic year updated.');
     },
-    onError: (err: any) => setError(err?.message || 'Failed to set current academic year'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to set current academic year')),
   });
 
   const {
@@ -99,6 +117,7 @@ export function ManagerAcademicYearsPage() {
     reset({ name: '', startDate: '', endDate: '', status: 'ACTIVE', isCurrent: false });
     setOpen(true);
     setError(null);
+    setSuccess(null);
   };
 
   const openEdit = (item: AcademicYearResponse) => {
@@ -112,6 +131,7 @@ export function ManagerAcademicYearsPage() {
     });
     setOpen(true);
     setError(null);
+    setSuccess(null);
   };
 
   const onFormSubmit = (values: AcademicYearFormValues) => {
@@ -138,6 +158,30 @@ export function ManagerAcademicYearsPage() {
           <Plus className="mr-2 h-4 w-4" /> Add Academic Year
         </Button>
       </div>
+
+      {queryError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load academic years</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(queryError, 'Please try again.')}
+            <Button className="ml-3" size="sm" variant="outline" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {success && (
+        <Alert>
+          <AlertTitle>Saved</AlertTitle>
+          <AlertDescription>{success}</AlertDescription>
+        </Alert>
+      )}
+      {error && !open && (
+        <Alert variant="destructive">
+          <AlertTitle>Request failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
 
       <Card className="p-4">
         <div className="mb-4">
@@ -170,14 +214,14 @@ export function ManagerAcademicYearsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.content?.length === 0 && (
+                  {!queryError && data?.content?.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground">
                         No academic years found
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((item: any) => (
+                  {data?.content?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.startDate}</TableCell>
@@ -296,4 +340,3 @@ export function ManagerAcademicYearsPage() {
     </div>
   );
 }
-

@@ -1,8 +1,11 @@
-import { api } from './api';
-import type { PaginatedResponse } from '@/types/api';
+import { api, unwrapApiResponse } from './api';
+import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { DepartmentHeadOptionResponse } from '@/types/academic';
 
 export interface AcademicYear {
   id: number;
+  uuid: string;
+  schoolId: number;
   name: string;
   startDate: string;
   endDate: string;
@@ -30,10 +33,13 @@ export interface UpdateAcademicYearRequest {
 
 export interface Department {
   id: number;
+  uuid: string;
+  schoolId: number;
   name: string;
   code: string | null;
   description: string | null;
   headOfDepartmentId: number | null;
+  headOfDepartmentName: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -57,6 +63,8 @@ export interface UpdateDepartmentRequest {
 
 export interface Class {
   id: number;
+  uuid: string;
+  schoolId: number;
   name: string;
   code: string | null;
   description: string | null;
@@ -81,7 +89,10 @@ export interface UpdateClassRequest {
 
 export interface Stream {
   id: number;
+  uuid: string;
+  schoolId: number;
   classId: number;
+  className: string;
   name: string;
   code: string | null;
   capacity: number | null;
@@ -108,10 +119,13 @@ export interface UpdateStreamRequest {
 
 export interface Subject {
   id: number;
+  uuid: string;
+  schoolId: number;
   name: string;
   code: string | null;
   description: string | null;
   departmentId: number | null;
+  departmentName: string | null;
   status: string;
   createdAt: string;
   updatedAt: string;
@@ -133,147 +147,171 @@ export interface UpdateSubjectRequest {
   status?: string;
 }
 
-export async function getAcademicYears(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export interface StreamSubjectAssignment {
+  id: number;
+  subjectId: number;
+  subjectName: string;
+  subjectCode: string | null;
+  academicYearId: number;
+  classId: number;
+  streamId: number;
+}
+
+export interface SaveStreamSubjectsRequest {
+  academicYearId: number;
+  classId: number;
+  streamId: number;
+  subjectIds: number[];
+}
+
+export async function getAcademicYears(page?: number, size?: number, search?: string) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<AcademicYear>>('/school/academic-years', { params });
-  return data;
+  if (search?.trim()) params.search = search.trim();
+  return unwrapApiResponse(api.get<ApiResponse<PaginatedResponse<AcademicYear>>>('/school/academic-years', { params }));
 }
 
 export async function getAcademicYear(id: number) {
-  const { data } = await api.get<AcademicYear>(`/school/academic-years/${id}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<AcademicYear>>(`/school/academic-years/${id}`));
 }
 
 export async function createAcademicYear(data: CreateAcademicYearRequest) {
-  const response = await api.post<AcademicYear>('/school/academic-years', data);
-  return response.data;
+  return unwrapApiResponse(api.post<ApiResponse<AcademicYear>>('/school/academic-years', data));
 }
 
 export async function updateAcademicYear(id: number, data: UpdateAcademicYearRequest) {
-  const response = await api.put<AcademicYear>(`/school/academic-years/${id}`, data);
-  return response.data;
+  return unwrapApiResponse(api.put<ApiResponse<AcademicYear>>(`/school/academic-years/${id}`, data));
 }
 
 export async function setCurrentAcademicYear(id: number) {
-  const response = await api.patch<AcademicYear>(`/school/academic-years/${id}/status`);
-  return response.data;
+  return unwrapApiResponse(api.patch<ApiResponse<AcademicYear>>(`/school/academic-years/${id}/status`));
 }
 
-export async function getDepartments(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getDepartments(page?: number, size?: number, search?: string) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Department>>('/school/departments', { params });
-  return data;
+  if (search?.trim()) params.search = search.trim();
+  return unwrapApiResponse(api.get<ApiResponse<PaginatedResponse<Department>>>('/school/departments', { params }));
+}
+
+export async function getEligibleDepartmentHeads() {
+  return unwrapApiResponse(
+    api.get<ApiResponse<DepartmentHeadOptionResponse[]>>('/school/departments/eligible-heads')
+  );
 }
 
 export async function getDepartment(id: number) {
-  const { data } = await api.get<Department>(`/school/departments/${id}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<Department>>(`/school/departments/${id}`));
 }
 
 export async function createDepartment(data: CreateDepartmentRequest) {
-  const response = await api.post<Department>('/school/departments', data);
-  return response.data;
+  return unwrapApiResponse(api.post<ApiResponse<Department>>('/school/departments', data));
 }
 
 export async function updateDepartment(id: number, data: UpdateDepartmentRequest) {
-  const response = await api.put<Department>(`/school/departments/${id}`, data);
-  return response.data;
+  return unwrapApiResponse(api.put<ApiResponse<Department>>(`/school/departments/${id}`, data));
 }
 
 export async function updateDepartmentStatus(id: number, status: string) {
-  const response = await api.patch<Department>(`/school/departments/${id}/status`, { status });
-  return response.data;
+  return unwrapApiResponse(api.patch<ApiResponse<Department>>(`/school/departments/${id}/status`, undefined, { params: { status } }));
 }
 
-export async function getClasses(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getClasses(page?: number, size?: number, search?: string) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Class>>('/school/classes', { params });
-  return data;
+  if (search?.trim()) params.search = search.trim();
+  return unwrapApiResponse(api.get<ApiResponse<PaginatedResponse<Class>>>('/school/classes', { params }));
 }
 
 export async function getClass(id: number) {
-  const { data } = await api.get<Class>(`/school/classes/${id}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<Class>>(`/school/classes/${id}`));
 }
 
 export async function createClass(data: CreateClassRequest) {
-  const response = await api.post<Class>('/school/classes', data);
-  return response.data;
+  return unwrapApiResponse(api.post<ApiResponse<Class>>('/school/classes', data));
 }
 
 export async function updateClass(id: number, data: UpdateClassRequest) {
-  const response = await api.put<Class>(`/school/classes/${id}`, data);
-  return response.data;
+  return unwrapApiResponse(api.put<ApiResponse<Class>>(`/school/classes/${id}`, data));
 }
 
 export async function updateClassStatus(id: number, status: string) {
-  const response = await api.patch<Class>(`/school/classes/${id}/status`, { status });
-  return response.data;
+  return unwrapApiResponse(api.patch<ApiResponse<Class>>(`/school/classes/${id}/status`, undefined, { params: { status } }));
 }
 
-export async function getStreams(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getStreams(page?: number, size?: number, search?: string) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Stream>>('/school/streams', { params });
-  return data;
+  if (search?.trim()) params.search = search.trim();
+  return unwrapApiResponse(api.get<ApiResponse<PaginatedResponse<Stream>>>('/school/streams', { params }));
 }
 
 export async function getStreamsByClass(classId: number) {
-  const { data } = await api.get<Stream[]>(`/school/streams/class/${classId}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<Stream[]>>(`/school/streams/class/${classId}`));
 }
 
 export async function getStream(id: number) {
-  const { data } = await api.get<Stream>(`/school/streams/${id}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<Stream>>(`/school/streams/${id}`));
 }
 
 export async function createStream(data: CreateStreamRequest) {
-  const response = await api.post<Stream>('/school/streams', data);
-  return response.data;
+  return unwrapApiResponse(api.post<ApiResponse<Stream>>('/school/streams', data));
 }
 
 export async function updateStream(id: number, data: UpdateStreamRequest) {
-  const response = await api.put<Stream>(`/school/streams/${id}`, data);
-  return response.data;
+  return unwrapApiResponse(api.put<ApiResponse<Stream>>(`/school/streams/${id}`, data));
 }
 
 export async function updateStreamStatus(id: number, status: string) {
-  const response = await api.patch<Stream>(`/school/streams/${id}/status`, { status });
-  return response.data;
+  return unwrapApiResponse(api.patch<ApiResponse<Stream>>(`/school/streams/${id}/status`, undefined, { params: { status } }));
 }
 
-export async function getSubjects(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getSubjects(page?: number, size?: number, search?: string) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Subject>>('/school/subjects', { params });
-  return data;
+  if (search?.trim()) params.search = search.trim();
+  return unwrapApiResponse(api.get<ApiResponse<PaginatedResponse<Subject>>>('/school/subjects', { params }));
 }
 
 export async function getSubject(id: number) {
-  const { data } = await api.get<Subject>(`/school/subjects/${id}`);
-  return data;
+  return unwrapApiResponse(api.get<ApiResponse<Subject>>(`/school/subjects/${id}`));
 }
 
 export async function createSubject(data: CreateSubjectRequest) {
-  const response = await api.post<Subject>('/school/subjects', data);
-  return response.data;
+  return unwrapApiResponse(api.post<ApiResponse<Subject>>('/school/subjects', data));
 }
 
 export async function updateSubject(id: number, data: UpdateSubjectRequest) {
-  const response = await api.put<Subject>(`/school/subjects/${id}`, data);
-  return response.data;
+  return unwrapApiResponse(api.put<ApiResponse<Subject>>(`/school/subjects/${id}`, data));
 }
 
 export async function updateSubjectStatus(id: number, status: string) {
-  const response = await api.patch<Subject>(`/school/subjects/${id}/status`, { status });
-  return response.data;
+  return unwrapApiResponse(api.patch<ApiResponse<Subject>>(`/school/subjects/${id}/status`, undefined, { params: { status } }));
+}
+
+export async function getStreamSubjectAssignments(academicYearId: number, classId: number, streamId: number) {
+  const params = { academicYearId, classId, streamId };
+  return unwrapApiResponse(
+    api.get<ApiResponse<StreamSubjectAssignment[]>>('/school/stream-subject-assignments', { params })
+  );
+}
+
+export async function saveStreamSubjectAssignments(data: SaveStreamSubjectsRequest) {
+  return unwrapApiResponse(
+    api.put<ApiResponse<StreamSubjectAssignment[]>>('/school/stream-subject-assignments', data)
+  );
+}
+
+export async function getStudentStreamSubjects(studentId: number, academicYearId: number) {
+  return unwrapApiResponse(
+    api.get<ApiResponse<StreamSubjectAssignment[]>>(
+      `/school/stream-subject-assignments/student/${studentId}`,
+      { params: { academicYearId } }
+    )
+  );
 }

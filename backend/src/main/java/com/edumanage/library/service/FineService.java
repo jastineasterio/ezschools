@@ -11,6 +11,7 @@ import com.edumanage.library.repository.BorrowingRepository;
 import com.edumanage.library.repository.FineRepository;
 import com.edumanage.library.repository.LibraryMemberRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
@@ -30,20 +31,23 @@ public class FineService {
     private final BorrowingRepository borrowingRepository;
     private final LibraryMemberRepository libraryMemberRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public FineService(FineRepository fineRepository,
                        BorrowingRepository borrowingRepository,
                        LibraryMemberRepository libraryMemberRepository,
-                       AuditLogService auditLogService) {
+                       AuditLogService auditLogService, AccessGuard accessGuard) {
         this.fineRepository = fineRepository;
         this.borrowingRepository = borrowingRepository;
         this.libraryMemberRepository = libraryMemberRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<FineDto> list(Pageable pageable) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Page<Fine> page = fineRepository.findBySchoolId(tenantId, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -51,6 +55,7 @@ public class FineService {
     public List<FineDto> listPending() {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         return fineRepository.findBySchoolIdAndStatus(tenantId, "PENDING").stream()
                 .map(this::mapToDto)
                 .toList();
@@ -59,6 +64,7 @@ public class FineService {
     public FineDto get(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Fine fine = fineRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fine not found"));
         return mapToDto(fine);
@@ -68,6 +74,7 @@ public class FineService {
     public FineDto createFine(Long borrowingId, BigDecimal fineAmount, String fineType, String remarks) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         var borrowing = borrowingRepository.findBySchoolIdAndId(tenantId, borrowingId)
                 .orElseThrow(() -> new ResourceNotFoundException("Borrowing not found"));
@@ -107,6 +114,7 @@ public class FineService {
     public FineDto payFine(Long id, BigDecimal amount) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Fine fine = fineRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fine not found"));
@@ -140,6 +148,7 @@ public class FineService {
     public FineDto waiveFine(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Fine fine = fineRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fine not found"));
@@ -160,6 +169,7 @@ public class FineService {
     public void delete(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Fine fine = fineRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Fine not found"));

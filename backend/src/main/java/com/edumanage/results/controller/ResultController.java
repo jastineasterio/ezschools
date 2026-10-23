@@ -23,6 +23,7 @@ public class ResultController {
     private final ResultService resultService;
 
     @GetMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<PageResponse<ResultDto>>> list(Pageable pageable) {
         var results = resultService.list(pageable);
         return ResponseEntity.ok(new ApiResponse<>(true, "Results fetched", results, null, LocalDateTime.now(), "/api/school/results"));
@@ -36,6 +37,7 @@ public class ResultController {
     }
 
     @GetMapping("/examination/{examinationId}")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<PageResponse<ResultDto>>> listByExamination(@PathVariable Long examinationId,
                                                                                   Pageable pageable) {
         var results = resultService.listByExamination(examinationId, pageable);
@@ -43,18 +45,21 @@ public class ResultController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<ResultDto>> getById(@PathVariable Long id) {
         var result = resultService.getById(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result fetched", result, null, LocalDateTime.now(), "/api/school/results/" + id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_TEACHER')")
     public ResponseEntity<ApiResponse<ResultDto>> create(@Valid @RequestBody CreateResultRequest request) {
         var result = resultService.create(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result created", result, null, LocalDateTime.now(), "/api/school/results"));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_TEACHER')")
     public ResponseEntity<ApiResponse<ResultDto>> update(@PathVariable Long id,
                                                          @Valid @RequestBody CreateResultRequest request) {
         var result = resultService.update(id, request);
@@ -62,18 +67,21 @@ public class ResultController {
     }
 
     @PostMapping("/{id}/submit")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_TEACHER')")
     public ResponseEntity<ApiResponse<ResultDto>> submit(@PathVariable Long id) {
         var result = resultService.submit(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result submitted", result, null, LocalDateTime.now(), "/api/school/results/" + id + "/submit"));
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<ResultDto>> approve(@PathVariable Long id) {
         var result = resultService.approve(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result approved", result, null, LocalDateTime.now(), "/api/school/results/" + id + "/approve"));
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<ResultDto>> reject(@PathVariable Long id,
                                                          @RequestParam(required = false) String comment) {
         var result = resultService.reject(id, comment);
@@ -81,6 +89,7 @@ public class ResultController {
     }
 
     @PostMapping("/{id}/publish")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<ResultDto>> publish(@PathVariable Long id) {
         var result = resultService.publish(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result published", result, null, LocalDateTime.now(), "/api/school/results/" + id + "/publish"));

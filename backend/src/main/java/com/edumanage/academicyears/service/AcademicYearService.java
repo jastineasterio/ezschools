@@ -1,7 +1,7 @@
 package com.edumanage.academicyears.service;
 
-import com.edumanage.exception.BadRequestException;
 import com.edumanage.exception.ConflictException;
+import com.edumanage.exception.BadRequestException;
 import com.edumanage.exception.ForbiddenException;
 import com.edumanage.exception.ResourceNotFoundException;
 import com.edumanage.academicyears.dto.AcademicYearDto;
@@ -16,9 +16,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
 @Service
 public class AcademicYearService {
 
@@ -30,18 +27,13 @@ public class AcademicYearService {
         this.auditLogService = auditLogService;
     }
 
-    public PageResponse<AcademicYearDto> listBySchool(Pageable pageable) {
+    public PageResponse<AcademicYearDto> listBySchool(Pageable pageable, String search) {
         Long tenantId = TenantContext.getTenantId();
-        Page<AcademicYear> page;
-        if (tenantId != null) {
-            List<AcademicYear> all = academicYearRepository.findBySchoolIdOrderByStartDateDesc(tenantId);
-            int start = (int) pageable.getOffset();
-            int end = Math.min((start + pageable.getPageSize()), all.size());
-            List<AcademicYear> paged = start > all.size() ? List.of() : all.subList(start, end);
-            page = new org.springframework.data.domain.PageImpl<>(paged, pageable, all.size());
-        } else {
-            page = academicYearRepository.findAll(pageable);
+        if (tenantId == null && !TenantContext.isSuperAdmin()) {
+            throw new ForbiddenException("A school assignment is required");
         }
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        Page<AcademicYear> page = academicYearRepository.search(tenantId, normalizedSearch, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
 
@@ -50,25 +42,21 @@ public class AcademicYearService {
                 .filter(ay -> !ay.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Academic year not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(academicYear.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(academicYear.getSchoolId());
 
         return mapToDto(academicYear);
     }
 
     @Transactional
     public AcademicYearDto create(CreateAcademicYearRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        Long schoolId = tenantId != null ? tenantId : null;
-        if (schoolId == null) {
-            throw new BadRequestException("School ID is required");
-        }
+        Long schoolId = TenantContext.requireTenantId();
+        validateDateRange(request);
 
         if (academicYearRepository.existsBySchoolIdAndName(schoolId, request.getName())) {
             throw new ConflictException("Academic year name already exists for this school");
         }
+        validateNoOverlap(schoolId, request.getStartDate(), request.getEndDate(), null);
+        validateCurrentYearChange(schoolId, request.getIsCurrent(), null);
 
         AcademicYear academicYear = new AcademicYear();
         academicYear.setSchoolId(schoolId);
@@ -77,14 +65,6 @@ public class AcademicYearService {
         academicYear.setEndDate(request.getEndDate());
         academicYear.setStatus(request.getStatus() != null ? request.getStatus() : "UPCOMING");
         academicYear.setCurrent(request.getIsCurrent() != null && request.getIsCurrent());
-
-        if (Boolean.TRUE.equals(request.getIsCurrent())) {
-            academicYearRepository.findBySchoolIdAndIsCurrentTrue(schoolId)
-                    .ifPresent(current -> {
-                        current.setCurrent(false);
-                        academicYearRepository.save(current);
-                    });
-        }
 
         academicYearRepository.save(academicYear);
 
@@ -100,10 +80,8 @@ public class AcademicYearService {
                 .filter(ay -> !ay.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Academic year not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(academicYear.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(academicYear.getSchoolId());
+        validateDateRange(request);
 
         Long schoolId = academicYear.getSchoolId();
 
@@ -111,6 +89,8 @@ public class AcademicYearService {
                 academicYearRepository.existsBySchoolIdAndName(schoolId, request.getName())) {
             throw new ConflictException("Academic year name already exists for this school");
         }
+        validateNoOverlap(schoolId, request.getStartDate(), request.getEndDate(), id);
+        validateCurrentYearChange(schoolId, request.getIsCurrent(), id);
 
         academicYear.setName(request.getName());
         academicYear.setStartDate(request.getStartDate());
@@ -120,16 +100,6 @@ public class AcademicYearService {
         }
         if (request.getIsCurrent() != null) {
             academicYear.setCurrent(request.getIsCurrent());
-        }
-
-        if (Boolean.TRUE.equals(request.getIsCurrent())) {
-            academicYearRepository.findBySchoolIdAndIsCurrentTrue(schoolId)
-                    .ifPresent(current -> {
-                        if (!current.getId().equals(academicYear.getId())) {
-                            current.setCurrent(false);
-                            academicYearRepository.save(current);
-                        }
-                    });
         }
 
         academicYearRepository.save(academicYear);
@@ -146,12 +116,9 @@ public class AcademicYearService {
                 .filter(ay -> !ay.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Academic year not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(academicYear.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(academicYear.getSchoolId());
 
-        academicYearRepository.findBySchoolIdAndIsCurrentTrue(academicYear.getSchoolId())
+        academicYearRepository.findBySchoolIdAndIsCurrentTrueAndDeletedAtIsNull(academicYear.getSchoolId())
                 .ifPresent(current -> {
                     current.setCurrent(false);
                     academicYearRepository.save(current);
@@ -164,6 +131,31 @@ public class AcademicYearService {
                 "Set academic year " + academicYear.getName() + " as current", null, null, null);
 
         return mapToDto(academicYear);
+    }
+
+    private void validateDateRange(CreateAcademicYearRequest request) {
+        if (request.getStartDate().isAfter(request.getEndDate())) {
+            throw new BadRequestException("Start date must be on or before the end date");
+        }
+    }
+
+    private void validateNoOverlap(Long schoolId, java.time.LocalDate startDate,
+                                   java.time.LocalDate endDate, Long excludeId) {
+        if (academicYearRepository.existsOverlapping(schoolId, startDate, endDate, excludeId)) {
+            throw new ConflictException("Academic year dates overlap another academic year for this school");
+        }
+    }
+
+    private void validateCurrentYearChange(Long schoolId, Boolean requestedCurrent, Long excludeId) {
+        if (!Boolean.TRUE.equals(requestedCurrent)) {
+            return;
+        }
+        academicYearRepository.findBySchoolIdAndIsCurrentTrueAndDeletedAtIsNull(schoolId)
+                .filter(current -> !current.getId().equals(excludeId))
+                .ifPresent(current -> {
+                    throw new ConflictException(
+                            "A current academic year already exists. Review it before setting another year as current");
+                });
     }
 
     private AcademicYearDto mapToDto(AcademicYear entity) {

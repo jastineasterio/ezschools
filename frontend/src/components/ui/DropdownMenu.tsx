@@ -1,9 +1,10 @@
 ﻿import { useState, useRef, useEffect } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface DropdownMenuProps {
-  trigger: React.ReactNode;
-  children: React.ReactNode;
+  trigger: ReactNode;
+  children: ReactNode;
   align?: 'left' | 'right';
 }
 
@@ -27,7 +28,7 @@ export function DropdownMenu({ trigger, children, align = 'right' }: DropdownMen
       {open && (
         <div
           className={cn(
-            'absolute z-50 mt-2 min-w-[8rem] rounded-md border bg-white shadow-md',
+            'absolute z-50 mt-2 min-w-[8rem] rounded-md border border-border bg-popover text-popover-foreground shadow-md',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >
@@ -44,7 +45,7 @@ export function DropdownMenuItem({
   className,
 }: {
   onClick?: () => void;
-  children: React.ReactNode;
+  children: ReactNode;
   className?: string;
 }) {
   return (
@@ -61,4 +62,3 @@ export function DropdownMenuItem({
     </button>
   );
 }
-

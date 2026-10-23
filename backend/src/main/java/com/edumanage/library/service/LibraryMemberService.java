@@ -7,6 +7,7 @@ import com.edumanage.library.dto.LibraryMemberDto;
 import com.edumanage.library.entity.LibraryMember;
 import com.edumanage.library.repository.LibraryMemberRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
@@ -22,15 +23,18 @@ public class LibraryMemberService {
 
     private final LibraryMemberRepository libraryMemberRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
-    public LibraryMemberService(LibraryMemberRepository libraryMemberRepository, AuditLogService auditLogService) {
+    public LibraryMemberService(LibraryMemberRepository libraryMemberRepository, AuditLogService auditLogService, AccessGuard accessGuard) {
         this.libraryMemberRepository = libraryMemberRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<LibraryMemberDto> list(Pageable pageable) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Page<LibraryMember> page = libraryMemberRepository.findBySchoolId(tenantId, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -38,6 +42,7 @@ public class LibraryMemberService {
     public List<LibraryMemberDto> listByMemberType(String memberType) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         return libraryMemberRepository.findBySchoolIdAndMemberType(tenantId, memberType).stream()
                 .map(this::mapToDto)
                 .toList();
@@ -46,6 +51,7 @@ public class LibraryMemberService {
     public LibraryMemberDto get(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         LibraryMember member = libraryMemberRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Library member not found"));
         return mapToDto(member);
@@ -55,6 +61,7 @@ public class LibraryMemberService {
     public LibraryMemberDto create(CreateLibraryMemberRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         if (libraryMemberRepository.existsBySchoolIdAndMembershipNumber(tenantId, request.getMembershipNumber())) {
             throw new com.edumanage.exception.ConflictException("Membership number already exists");
@@ -79,6 +86,7 @@ public class LibraryMemberService {
     public LibraryMemberDto update(Long id, CreateLibraryMemberRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         LibraryMember member = libraryMemberRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Library member not found"));
@@ -106,6 +114,7 @@ public class LibraryMemberService {
     public void delete(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         LibraryMember member = libraryMemberRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Library member not found"));

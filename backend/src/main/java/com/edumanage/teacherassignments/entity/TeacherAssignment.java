@@ -11,9 +11,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 @Entity
-@Table(name = "teacher_assignments", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"teacher_id", "subject_id", "class_id", "stream_id", "academic_year_id"})
-})
+@Table(name = "teacher_assignments")
 @Getter
 @Setter
 public class TeacherAssignment extends SoftDeletableEntity {

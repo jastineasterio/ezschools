@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogClose } from '@/components/ui/Dialog';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Plus } from 'lucide-react';
 import { CreatePackageRequest } from '@/types/api';
+import { formatTsh } from '@/lib/utils';
 
 export function PackagesPage() {
   const [open, setOpen] = useState(false);
@@ -121,7 +122,7 @@ export function PackagesPage() {
                 <div>
                   <h3 className="font-semibold">{pkg.displayName}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{pkg.description}</p>
-                  <p className="mt-2 text-2xl font-bold">${pkg.price}<span className="text-sm text-muted-foreground">/{pkg.billingPeriod?.toLowerCase() || ''}</span></p>
+                  <p className="mt-2 text-2xl font-bold">{formatTsh(pkg.price)}<span className="text-sm text-muted-foreground"> / {pkg.billingPeriod?.toLowerCase() || ''}</span></p>
                 </div>
                 <Badge variant={pkg.active ? 'success' : 'secondary'}>{pkg.active ? 'Active' : 'Inactive'}</Badge>
               </div>

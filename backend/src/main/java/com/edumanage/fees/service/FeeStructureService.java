@@ -10,6 +10,7 @@ import com.edumanage.fees.entity.FeeStructure;
 import com.edumanage.fees.repository.FeeStructureRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -24,13 +25,17 @@ public class FeeStructureService {
 
     private final FeeStructureRepository feeStructureRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
-    public FeeStructureService(FeeStructureRepository feeStructureRepository, AuditLogService auditLogService) {
+    public FeeStructureService(FeeStructureRepository feeStructureRepository, AuditLogService auditLogService,
+                               AccessGuard accessGuard) {
         this.feeStructureRepository = feeStructureRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<FeeStructureDto> list(Pageable pageable) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Page<FeeStructure> page;
         if (tenantId != null) {
@@ -42,6 +47,7 @@ public class FeeStructureService {
     }
 
     public FeeStructureDto getById(Long id) {
+        accessGuard.assertFinancialAccess();
         var feeStructure = feeStructureRepository.findById(id)
                 .filter(f -> !f.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Fee structure not found"));
@@ -56,6 +62,7 @@ public class FeeStructureService {
 
     @Transactional
     public FeeStructureDto create(CreateFeeStructureRequest request) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -87,6 +94,7 @@ public class FeeStructureService {
 
     @Transactional
     public FeeStructureDto update(Long id, CreateFeeStructureRequest request) {
+        accessGuard.assertFinancialAccess();
         var feeStructure = feeStructureRepository.findById(id)
                 .filter(f -> !f.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Fee structure not found"));

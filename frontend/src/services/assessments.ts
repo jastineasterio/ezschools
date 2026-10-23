@@ -1,5 +1,8 @@
-import { api } from './api';
+import { api as http, createApiResponseClient } from './api';
 import type { PaginatedResponse } from '@/types/api';
+import type { AttendanceResponse, ResultResponse } from '@/types/academic';
+
+const api = createApiResponseClient(http);
 
 export interface Attendance {
   id: number;
@@ -169,16 +172,7 @@ export interface AddGradingSchemeRangeRequest {
   remark?: string;
 }
 
-export interface Result {
-  id: number;
-  studentId: number;
-  examinationSubjectId: number;
-  marksObtained: number | null;
-  remarks: string | null;
-  status: string;
-  createdAt: string;
-  updatedAt: string;
-}
+export type Result = ResultResponse;
 
 export interface CreateResultRequest {
   studentId: number;
@@ -218,11 +212,18 @@ export interface ExaminationReport {
   updatedAt: string;
 }
 
-export async function getAttendance(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getAttendance(
+  page?: number,
+  size?: number,
+  classId?: number,
+  date?: string
+) {
+  const params: Record<string, number | string> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Attendance>>('/school/attendance', { params });
+  if (classId !== undefined) params.classId = classId;
+  if (date) params.date = date;
+  const { data } = await api.get<PaginatedResponse<AttendanceResponse>>('/school/attendance', { params });
   return data;
 }
 
@@ -407,7 +408,9 @@ export async function approveResult(id: number) {
 }
 
 export async function rejectResult(id: number, comment?: string) {
-  const response = await api.post<Result>(`/school/results/${id}/reject`, { comment });
+  const response = await api.post<Result>(`/school/results/${id}/reject`, undefined, {
+    params: { comment },
+  });
   return response.data;
 }
 

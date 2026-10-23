@@ -11,6 +11,7 @@ import com.edumanage.users.entity.User;
 import com.edumanage.users.repository.UserRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -27,17 +28,20 @@ public class ExaminationReportService {
     private final ExaminationRepository examinationRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public ExaminationReportService(ExaminationReportRepository examinationReportRepository,
                                     StudentProfileRepository studentProfileRepository,
                                     ExaminationRepository examinationRepository,
                                     UserRepository userRepository,
-                                    AuditLogService auditLogService) {
+                                    AuditLogService auditLogService,
+                                    AccessGuard accessGuard) {
         this.examinationReportRepository = examinationReportRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.examinationRepository = examinationRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<ExaminationReportDto> list(Pageable pageable) {
@@ -52,6 +56,7 @@ public class ExaminationReportService {
     }
 
     public PageResponse<ExaminationReportDto> listByStudent(Long studentId, Pageable pageable) {
+        accessGuard.assertCanAccessStudent(studentId);
         var student = studentProfileRepository.findById(studentId)
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));

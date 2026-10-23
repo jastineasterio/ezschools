@@ -57,8 +57,10 @@ public class BoardingStudentService {
         Page<BoardingStudent> page;
         if (tenantId != null) {
             page = boardingStudentRepository.findBySchoolId(tenantId, pageable);
-        } else {
+        } else if (TenantContext.isSuperAdmin()) {
             page = boardingStudentRepository.findAll(pageable);
+        } else {
+            throw new ForbiddenException("A school assignment is required");
         }
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -88,7 +90,6 @@ public class BoardingStudentService {
         var student = studentProfileRepository.findById(request.getStudentId())
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
-
         if (!tenantId.equals(student.getSchoolId())) {
             throw new ForbiddenException("Student does not belong to this school");
         }
@@ -157,6 +158,12 @@ public class BoardingStudentService {
         var student = studentProfileRepository.findById(request.getStudentId())
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (!existing.getSchoolId().equals(student.getSchoolId())) {
+            throw new ForbiddenException("Student does not belong to this school");
+        }
+        if (!existing.getStudentId().equals(request.getStudentId())) {
+            throw new BadRequestException("A boarding transfer must keep the same student");
+        }
 
         var oldBed = bedRepository.findBySchoolIdAndId(existing.getSchoolId(), existing.getBedId())
                 .orElseThrow(() -> new ResourceNotFoundException("Old bed not found"));

@@ -9,6 +9,7 @@ import com.edumanage.parents.entity.Parent;
 import com.edumanage.parents.repository.ParentRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -20,13 +21,16 @@ public class ParentService {
 
     private final ParentRepository parentRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
-    public ParentService(ParentRepository parentRepository, AuditLogService auditLogService) {
+    public ParentService(ParentRepository parentRepository, AuditLogService auditLogService, AccessGuard accessGuard) {
         this.parentRepository = parentRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<ParentDto> list(Pageable pageable) {
+        accessGuard.assertCanListAllStudents();
         Long tenantId = TenantContext.getTenantId();
         Page<Parent> page;
         if (tenantId != null) {
@@ -38,6 +42,7 @@ public class ParentService {
     }
 
     public ParentDto getById(Long id) {
+        accessGuard.assertCanAccessParent(id);
         var parent = parentRepository.findById(id)
                 .filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));
@@ -52,6 +57,7 @@ public class ParentService {
 
     @Transactional
     public ParentDto create(CreateParentRequest request) {
+        accessGuard.assertAnyRole("MANAGER", "SUPER_ADMIN");
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -82,6 +88,7 @@ public class ParentService {
 
     @Transactional
     public ParentDto update(Long id, CreateParentRequest request) {
+        accessGuard.assertAnyRole("MANAGER", "SUPER_ADMIN");
         var parent = parentRepository.findById(id)
                 .filter(p -> !p.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Parent not found"));

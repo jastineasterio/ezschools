@@ -23,7 +23,8 @@ class FeeStructureServiceTest {
     @BeforeEach
     void setUp() {
         feeStructureRepository = mock(FeeStructureRepository.class);
-        feeStructureService = new FeeStructureService(feeStructureRepository, mock(com.edumanage.audit.service.AuditLogService.class));
+        feeStructureService = new FeeStructureService(feeStructureRepository, mock(com.edumanage.audit.service.AuditLogService.class),
+                mock(com.edumanage.security.AccessGuard.class));
     }
 
     @Test

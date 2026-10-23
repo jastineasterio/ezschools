@@ -20,11 +20,13 @@ public class SchoolDto {
     private String address;
     private String region;
     private String district;
+    private String timeZone;
     private boolean isActive;
     private boolean isSuspended;
     private LocalDateTime suspendedAt;
     private String suspendedReason;
     private LocalDateTime createdAt;
+    private long userCount;
     private String packageName;
     private String subscriptionStatus;
     private LocalDateTime subscriptionEndDate;

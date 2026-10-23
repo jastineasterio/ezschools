@@ -21,4 +21,22 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Page<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId, Pageable pageable);
     @Query("SELECT a FROM AuditLog a WHERE a.createdAt BETWEEN :start AND :end")
     Page<AuditLog> findByDateRange(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end, Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE (CAST(:search AS string) IS NULL OR LOWER(a.action) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(COALESCE(a.description, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(COALESCE(a.entityType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "AND (:action IS NULL OR a.action = :action) " +
+            "AND (:entityType IS NULL OR a.entityType = :entityType) " +
+            "AND a.schoolId = :schoolId")
+    Page<AuditLog> findFilteredBySchoolId(@Param("schoolId") Long schoolId,
+                                         @Param("search") String search,
+                                         @Param("action") String action,
+                                         @Param("entityType") String entityType,
+                                         Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE (CAST(:search AS string) IS NULL OR LOWER(a.action) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(COALESCE(a.description, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%')) OR LOWER(COALESCE(a.entityType, '')) LIKE LOWER(CONCAT('%', CAST(:search AS string), '%'))) " +
+            "AND (:action IS NULL OR a.action = :action) " +
+            "AND (:entityType IS NULL OR a.entityType = :entityType)")
+    Page<AuditLog> findFiltered(@Param("search") String search,
+                               @Param("action") String action,
+                               @Param("entityType") String entityType,
+                               Pageable pageable);
 }

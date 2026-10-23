@@ -23,8 +23,9 @@ public class SubjectController {
     private final SubjectService subjectService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<SubjectDto>>> list(Pageable pageable) {
-        var subjects = subjectService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<SubjectDto>>> list(
+            Pageable pageable, @RequestParam(required = false) String search) {
+        var subjects = subjectService.list(pageable, search);
         return ResponseEntity.ok(new ApiResponse<>(true, "Subjects fetched", subjects, null, LocalDateTime.now(), "/api/school/subjects"));
     }
 

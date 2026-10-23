@@ -11,11 +11,12 @@ import {
 } from '@/services/people';
 import type { StudentProfileResponse, CreateStudentProfileRequest } from '@/types/academic';
 import type { PaginatedResponse } from '@/types/api';
-import { Card } from '@/components/ui/Card';
+import { getApiErrorMessage } from '@/services/api';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
+import { Card } from '@/components/ui/Card';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -25,9 +26,9 @@ import { Plus, MoreVertical, UserX, UserCheck } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const studentSchema = z.object({
-  userId: z.number().min(1, 'User ID is required'),
-  admissionNumber: z.string().min(1, 'Admission number is required'),
+  userId: z.number(),
   firstName: z.string().min(1, 'First name is required'),
+
   middleName: z.string().optional(),
   lastName: z.string().min(1, 'Last name is required'),
   gender: z.string().optional(),
@@ -59,6 +60,8 @@ export function ManagerStudentsPage() {
   const [open, setOpen] = useState(false);
   const [editingStudent, setEditingStudent] = useState<StudentProfileResponse | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [createdCredentials, setCreatedCredentials] = useState<{ fullName: string; admissionNumber: string; initialPassword: string } | null>(null);
+
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -71,13 +74,20 @@ export function ManagerStudentsPage() {
 
   const createMutation = useMutation({
     mutationFn: (req: CreateStudentProfileRequest) => createStudent(req as any),
-    onSuccess: () => {
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['students'] });
+      setCreatedCredentials({
+        fullName: data?.fullName || `${data?.firstName || ''} ${data?.lastName || ''}`.trim(),
+        admissionNumber: data?.admissionNumber,
+        initialPassword: data?.initialPassword,
+      });
       setOpen(false);
       setEditingStudent(null);
       setFormError(null);
+      reset();
     },
   });
+
 
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: Partial<CreateStudentProfileRequest> }) =>
@@ -107,13 +117,13 @@ export function ManagerStudentsPage() {
     resolver: zodResolver(studentSchema),
     defaultValues: {
       userId: 0,
-      admissionNumber: '',
       firstName: '',
       middleName: '',
       lastName: '',
       gender: '',
       dateOfBirth: '',
-      registrationDate: '',
+      registrationDate: new Date().toISOString().slice(0, 10),
+
       phone: '',
       email: '',
       address: '',
@@ -132,13 +142,13 @@ export function ManagerStudentsPage() {
       setFormError(null);
       reset({
         userId: 0,
-        admissionNumber: '',
         firstName: '',
         middleName: '',
         lastName: '',
         gender: '',
         dateOfBirth: '',
-        registrationDate: '',
+        registrationDate: new Date().toISOString().slice(0, 10),
+
         phone: '',
         email: '',
         address: '',
@@ -186,7 +196,7 @@ export function ManagerStudentsPage() {
         await createMutation.mutateAsync(values);
       }
     } catch (err) {
-      setFormError(err instanceof Error ? err.message : 'Operation failed');
+      setFormError(getApiErrorMessage(err, 'Operation failed'));
     }
   };
 
@@ -353,10 +363,10 @@ export function ManagerStudentsPage() {
                 <Input {...register('middleName')} />
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Admission Number *</label>
-                <Input {...register('admissionNumber')} />
-                {errors.admissionNumber && <p className="text-sm text-destructive">{errors.admissionNumber.message}</p>}
+                <label className="text-sm font-medium">Admission Number</label>
+                <p className="text-sm text-muted-foreground">Generated automatically by the system.</p>
               </div>
+
               <div className="space-y-2">
                 <label className="text-sm font-medium">Gender</label>
                 <Select
@@ -375,7 +385,8 @@ export function ManagerStudentsPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Registration Date</label>
-                <Input type="date" {...register('registrationDate')} />
+                <Input type="date" {...register('registrationDate')} readOnly />
+
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Phone</label>
@@ -429,7 +440,29 @@ export function ManagerStudentsPage() {
           </form>
         </DialogContent>
       </Dialog>
+      <Dialog open={!!createdCredentials} onOpenChange={(o) => { if (!o) setCreatedCredentials(null); }}>
+
+        <DialogContent title="Student Created" description="Save these credentials now. The password will not be shown again.">
+          {createdCredentials && (
+            <div className="space-y-3">
+              <p className="font-medium">{createdCredentials.fullName}</p>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Admission Number: {createdCredentials.admissionNumber}</span>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(createdCredentials.admissionNumber)}>Copy</Button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm">Initial Password: {createdCredentials.initialPassword}</span>
+                <Button type="button" size="sm" variant="outline" onClick={() => navigator.clipboard.writeText(createdCredentials.initialPassword)}>Copy</Button>
+              </div>
+              <div className="flex justify-end">
+                <Button type="button" onClick={() => setCreatedCredentials(null)}>Close</Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
+
 

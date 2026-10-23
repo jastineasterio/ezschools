@@ -47,17 +47,16 @@ public class BoardingAttendanceService {
         Page<BoardingAttendance> page;
         if (tenantId != null) {
             page = boardingAttendanceRepository.findBySchoolId(tenantId, pageable);
-        } else {
+        } else if (TenantContext.isSuperAdmin()) {
             page = boardingAttendanceRepository.findAll(pageable);
+        } else {
+            throw new ForbiddenException("A school assignment is required");
         }
         return PageResponse.from(page.map(this::mapToDto));
     }
 
     public List<BoardingAttendanceDto> listAttendanceByDormitoryAndDate(Long dormitoryId, LocalDate date) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
         var dormitory = dormitoryRepository.findBySchoolIdAndId(tenantId, dormitoryId)
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Dormitory not found"));
@@ -74,10 +73,7 @@ public class BoardingAttendanceService {
 
     @Transactional
     public BoardingAttendanceDto createAttendance(CreateBoardingAttendanceRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
 
         var student = studentProfileRepository.findById(request.getStudentId())
                 .filter(s -> !s.isDeleted())
@@ -116,10 +112,26 @@ public class BoardingAttendanceService {
     public BoardingAttendanceDto updateAttendance(Long id, CreateBoardingAttendanceRequest request) {
         var attendance = findByIdAndSchool(id);
 
+        var student = studentProfileRepository.findById(request.getStudentId())
+                .filter(s -> !s.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (!attendance.getSchoolId().equals(student.getSchoolId())) {
+            throw new ForbiddenException("Student does not belong to this school");
+        }
+
         var dormitory = dormitoryRepository.findBySchoolIdAndId(attendance.getSchoolId(), request.getDormitoryId())
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Dormitory not found"));
 
+        if ((!attendance.getStudentId().equals(request.getStudentId())
+                || !attendance.getDormitoryId().equals(request.getDormitoryId())
+                || !attendance.getAttendanceDate().equals(request.getAttendanceDate()))
+                && boardingAttendanceRepository.existsBySchoolIdAndStudentIdAndDormitoryIdAndAttendanceDate(
+                attendance.getSchoolId(), request.getStudentId(), request.getDormitoryId(), request.getAttendanceDate())) {
+            throw new ConflictException("Attendance already recorded for this student on this date");
+        }
+
+        attendance.setStudentId(request.getStudentId());
         attendance.setDormitoryId(request.getDormitoryId());
         attendance.setAttendanceDate(request.getAttendanceDate());
         attendance.setStatus(request.getStatus());

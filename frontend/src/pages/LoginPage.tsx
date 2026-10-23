@@ -3,11 +3,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useAuth } from '@/store/AuthContext';
+import { getDashboardPath } from '@/lib/roles';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Card } from '@/components/ui/Card';
 import { Alert } from '@/components/ui/Alert';
 import { Loader2, School } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -18,6 +20,7 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 export function LoginPage() {
   const { login } = useAuth();
+  const navigate = useNavigate();
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,16 +39,7 @@ export function LoginPage() {
 
     try {
       const userData = await login(data.email, data.password);
-      const hasSuperAdminRole = (userData.roles ?? []).some((role) => {
-        const normalized = role.trim().toUpperCase();
-        return normalized === 'SUPER_ADMIN' || normalized === 'ROLE_SUPER_ADMIN';
-      });
-
-      if (hasSuperAdminRole) {
-        window.location.href = '/platform/dashboard';
-      } else {
-        window.location.href = '/school/dashboard';
-      }
+      navigate(getDashboardPath(userData.roles), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

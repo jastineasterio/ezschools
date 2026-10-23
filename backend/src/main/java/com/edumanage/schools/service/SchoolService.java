@@ -16,24 +16,30 @@ import com.edumanage.subscriptions.entity.Subscription;
 import com.edumanage.subscriptions.repository.SubscriptionRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.tenant.TenantContext;
+import com.edumanage.users.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.DateTimeException;
+import java.time.ZoneId;
 
 @Service
 public class SchoolService {
 
     private final SchoolRepository schoolRepository;
+    private final UserRepository userRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final PackageRepository packageRepository;
     private final AuditLogService auditLogService;
 
-    public SchoolService(SchoolRepository schoolRepository, SubscriptionRepository subscriptionRepository,
-                         PackageRepository packageRepository, AuditLogService auditLogService) {
+    public SchoolService(SchoolRepository schoolRepository, UserRepository userRepository,
+                         SubscriptionRepository subscriptionRepository, PackageRepository packageRepository,
+                         AuditLogService auditLogService) {
         this.schoolRepository = schoolRepository;
+        this.userRepository = userRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.packageRepository = packageRepository;
         this.auditLogService = auditLogService;
@@ -68,9 +74,16 @@ public class SchoolService {
 
     public PageResponse<SchoolDto> listSchools(Pageable pageable) {
         Page<School> page = schoolRepository.findAll(pageable);
+        var schoolIds = page.getContent().stream().map(School::getId).toList();
+        var userCounts = schoolIds.isEmpty()
+                ? java.util.Map.<Long, Long>of()
+                : userRepository.countSchoolUsersBySchoolIds(schoolIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(
+                                UserRepository.SchoolUserCount::getSchoolId,
+                                UserRepository.SchoolUserCount::getUserCount));
         return PageResponse.from(page.map(school -> {
             var dto = mapToDto(school, null, null, null);
-            return enrichWithSubscriptionInfo(school, dto);
+            return enrichWithSubscriptionInfo(school, dto, userCounts.getOrDefault(school.getId(), 0L));
         }));
     }
 
@@ -83,7 +96,8 @@ public class SchoolService {
             throw new ForbiddenException("Access denied");
         }
 
-        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null));
+        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null),
+                countSchoolUsers(school.getId()));
     }
 
     @Transactional
@@ -109,7 +123,29 @@ public class SchoolService {
         auditLogService.log("SCHOOL_UPDATE", "School", school.getId(),
                 "Updated school " + school.getName(), null, null, null);
 
-        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null));
+        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null),
+                countSchoolUsers(school.getId()));
+    }
+
+    @Transactional
+    public SchoolDto updateTimeZone(String timeZone) {
+        Long tenantId = TenantContext.requireTenantId();
+        if (timeZone == null || timeZone.isBlank()) {
+            throw new BadRequestException("Time zone is required");
+        }
+        final String validatedTimeZone;
+        try {
+            validatedTimeZone = ZoneId.of(timeZone).getId();
+        } catch (DateTimeException exception) {
+            throw new BadRequestException("Time zone must be a valid IANA time zone");
+        }
+        var school = schoolRepository.findById(tenantId)
+                .orElseThrow(() -> new ResourceNotFoundException("School not found"));
+        school.setTimeZone(validatedTimeZone);
+        schoolRepository.save(school);
+        auditLogService.log("SCHOOL_TIME_ZONE_UPDATE", "School", school.getId(),
+                "Updated school time zone", null, null, null);
+        return mapToDto(school, null, null, null);
     }
 
     @Transactional
@@ -125,7 +161,8 @@ public class SchoolService {
         auditLogService.log("SCHOOL_SUSPEND", "School", school.getId(),
                 "Suspended school " + school.getName() + ": " + reason, null, null, null);
 
-        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null));
+        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null),
+                countSchoolUsers(school.getId()));
     }
 
     @Transactional
@@ -141,18 +178,32 @@ public class SchoolService {
         auditLogService.log("SCHOOL_ACTIVATE", "School", school.getId(),
                 "Activated school " + school.getName(), null, null, null);
 
-        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null));
+        return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null),
+                countSchoolUsers(school.getId()));
     }
 
-    private SchoolDto enrichWithSubscriptionInfo(School school, SchoolDto dto) {
-        var activeSubscription = subscriptionRepository.findBySchoolIdAndStatus(school.getId(), "ACTIVE").orElse(null);
-        if (activeSubscription != null) {
-            var pkg = packageRepository.findById(activeSubscription.getPackageId()).orElse(null);
+    private SchoolDto enrichWithSubscriptionInfo(School school, SchoolDto dto, long userCount) {
+        dto.setUserCount(userCount);
+        var subscriptions = subscriptionRepository.findBySchoolId(school.getId());
+        var currentSubscription = subscriptions.stream()
+                .filter(subscription -> "ACTIVE".equals(subscription.getStatus()))
+                .max(java.util.Comparator.comparing(Subscription::getCreatedAt))
+                .orElseGet(() -> subscriptions.stream()
+                        .max(java.util.Comparator.comparing(Subscription::getCreatedAt))
+                        .orElse(null));
+        if (currentSubscription != null) {
+            var pkg = packageRepository.findById(currentSubscription.getPackageId()).orElse(null);
             dto.setPackageName(pkg != null ? pkg.getDisplayName() : null);
-            dto.setSubscriptionStatus(activeSubscription.getStatus());
-            dto.setSubscriptionEndDate(activeSubscription.getEndDate());
+            dto.setSubscriptionStatus(currentSubscription.getStatus());
+            dto.setSubscriptionEndDate(currentSubscription.getEndDate());
         }
         return dto;
+    }
+
+    private long countSchoolUsers(Long schoolId) {
+        return userRepository.countSchoolUsersBySchoolIds(java.util.List.of(schoolId)).stream()
+                .mapToLong(UserRepository.SchoolUserCount::getUserCount)
+                .sum();
     }
 
     private SchoolDto mapToDto(School school, String packageName, String subscriptionStatus, LocalDateTime subscriptionEndDate) {
@@ -166,6 +217,7 @@ public class SchoolService {
         dto.setAddress(school.getAddress());
         dto.setRegion(school.getRegion());
         dto.setDistrict(school.getDistrict());
+        dto.setTimeZone(school.getTimeZone());
         dto.setActive(school.isActive());
         dto.setSuspended(school.isSuspended());
         dto.setSuspendedAt(school.getSuspendedAt());

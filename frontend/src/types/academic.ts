@@ -33,6 +33,12 @@ export interface DepartmentResponse {
   updatedAt: string;
 }
 
+export interface DepartmentHeadOptionResponse {
+  id: number;
+  name: string;
+  email: string;
+}
+
 export interface CreateDepartmentRequest {
   name: string;
   code?: string;
@@ -168,6 +174,7 @@ export interface StudentProfileResponse {
   userId: number;
   schoolId: number;
   admissionNumber: string;
+  initialPassword?: string;
   firstName: string;
   middleName: string | null;
   lastName: string;
@@ -189,7 +196,7 @@ export interface StudentProfileResponse {
 
 export interface CreateStudentProfileRequest {
   userId: number;
-  admissionNumber: string;
+  admissionNumber?: string;
   firstName: string;
   middleName?: string;
   lastName: string;

@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/services/api';
 import { Card } from '@/components/ui/Card';
@@ -9,20 +9,52 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@
 import { Dialog, DialogContent, DialogClose } from '@/components/ui/Dialog';
 import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Plus, MoreVertical, Eye, Edit, Trash2 } from 'lucide-react';
-import { CreateSchoolRequest } from '@/types/api';
+import { Plus, MoreVertical, Eye, Edit, Trash2, CreditCard } from 'lucide-react';
+import { AssignPackageRequest, CreateSchoolRequest, PackageResponse, SchoolResponse, SubscriptionResponse } from '@/types/api';
+import { formatTsh } from '@/lib/utils';
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (typeof error === 'object' && error !== null && 'response' in error) {
+    const response = error.response;
+    if (typeof response === 'object' && response !== null && 'data' in response) {
+      const data = response.data;
+      if (typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string') {
+        return data.message;
+      }
+    }
+  }
+  return error instanceof Error ? error.message : fallback;
+}
 
 export function SchoolsPage() {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
+  const [assignSchool, setAssignSchool] = useState<SchoolResponse | null>(null);
+  const [selectedPackageId, setSelectedPackageId] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['schools', page, search],
     queryFn: () => api.get(`/platform/schools?page=${page}&size=10&search=${encodeURIComponent(search)}`).then(r => r.data.data),
+  });
+
+  const {
+    data: packages = [],
+    isLoading: packagesLoading,
+    isError: packagesError,
+    refetch: refetchPackages,
+  } = useQuery({
+    queryKey: ['packages'],
+    queryFn: async () => {
+      const response = await api.get<{ data: PackageResponse[] }>('/platform/packages');
+      if (!response.data.data) throw new Error('Package response did not contain package data');
+      return response.data.data.filter(pkg => pkg.active);
+    },
+    enabled: assignSchool !== null,
   });
 
   const createMutation = useMutation({
@@ -33,9 +65,32 @@ export function SchoolsPage() {
       queryClient.invalidateQueries({ queryKey: ['schools'] });
       setOpen(false);
     },
-    onError: (err: any) => {
-      const message = err?.response?.data?.message || err?.message || 'Failed to create school';
-      setError(message);
+    onError: (mutationError: unknown) => {
+      setError(getErrorMessage(mutationError, 'Failed to create school'));
+    },
+  });
+
+  const assignPackageMutation = useMutation({
+    mutationFn: async ({ schoolId, request }: { schoolId: number; request: AssignPackageRequest }) => {
+      const response = await api.post<{ data: SubscriptionResponse }>(
+        `/platform/subscriptions/assign?schoolId=${schoolId}`,
+        request
+      );
+      if (!response.data.data) throw new Error('Assignment response did not contain subscription data');
+      return response.data.data;
+    },
+    onSuccess: async (subscription) => {
+      setAssignmentError(null);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['schools'] }),
+        queryClient.invalidateQueries({ queryKey: ['subscriptions'] }),
+      ]);
+      setSuccess(`${subscription.packageName || 'Package'} assigned to ${subscription.schoolName || assignSchool?.name || 'school'} successfully`);
+      setAssignSchool(null);
+      setSelectedPackageId('');
+    },
+    onError: (mutationError: unknown) => {
+      setAssignmentError(getErrorMessage(mutationError, 'Failed to assign package'));
     },
   });
 
@@ -49,7 +104,7 @@ export function SchoolsPage() {
     district: '',
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
@@ -64,6 +119,28 @@ export function SchoolsPage() {
     }
 
     createMutation.mutate(formData);
+  };
+
+  const handlePackageAssignment = (e: FormEvent) => {
+    e.preventDefault();
+    setAssignmentError(null);
+    setSuccess(null);
+    if (!assignSchool) return;
+    if (!selectedPackageId) {
+      setAssignmentError('Select a package to assign');
+      return;
+    }
+    assignPackageMutation.mutate({
+      schoolId: assignSchool.id,
+      request: { packageId: Number(selectedPackageId) },
+    });
+  };
+
+  const openPackageAssignment = (school: SchoolResponse) => {
+    setSuccess(null);
+    setAssignmentError(null);
+    setSelectedPackageId('');
+    setAssignSchool(school);
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -82,6 +159,8 @@ export function SchoolsPage() {
       });
     }
   };
+
+  const selectedPackage = packages.find(pkg => String(pkg.id) === selectedPackageId);
 
   return (
     <div className="space-y-6">
@@ -126,6 +205,8 @@ export function SchoolsPage() {
                     <TableHead>Region</TableHead>
                     <TableHead>District</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead>Subscription</TableHead>
                     <TableHead>Users</TableHead>
                     <TableHead className="w-12" />
                   </TableRow>
@@ -133,20 +214,28 @@ export function SchoolsPage() {
                 <TableBody>
                   {data?.content?.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground">
+                      <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No schools found
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((school: any) => (
+                  {data?.content?.map((school: SchoolResponse) => (
                     <TableRow key={school.id}>
                       <TableCell className="font-medium">{school.name}</TableCell>
                       <TableCell>{school.region || '-'}</TableCell>
                       <TableCell>{school.district || '-'}</TableCell>
                       <TableCell>
-                        <Badge variant={school.suspended ? 'destructive' : 'success'}>
-                          {school.suspended ? 'Suspended' : 'Active'}
+                        <Badge variant={school.isSuspended ? 'destructive' : 'success'}>
+                          {school.isSuspended ? 'Suspended' : 'Active'}
                         </Badge>
+                      </TableCell>
+                      <TableCell>{school.packageName || '-'}</TableCell>
+                      <TableCell>
+                        {school.subscriptionStatus ? (
+                          <Badge variant={school.subscriptionStatus === 'ACTIVE' ? 'success' : 'warning'}>
+                            {school.subscriptionStatus}
+                          </Badge>
+                        ) : '-'}
                       </TableCell>
                       <TableCell>{school.userCount || 0}</TableCell>
                       <TableCell>
@@ -155,6 +244,9 @@ export function SchoolsPage() {
                         >
                           <DropdownMenuItem onClick={() => window.location.href = `/platform/schools/${school.id}`}>
                             <Eye className="mr-2 h-4 w-4" /> View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openPackageAssignment(school)}>
+                            <CreditCard className="mr-2 h-4 w-4" /> Assign Package
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             <Edit className="mr-2 h-4 w-4" /> Edit
@@ -271,7 +363,108 @@ export function SchoolsPage() {
           </form>
         </DialogContent>
       </Dialog>
+
+      <Dialog
+        open={assignSchool !== null}
+        onOpenChange={(newOpen) => {
+          if (!newOpen && !assignPackageMutation.isPending) {
+            setAssignSchool(null);
+            setAssignmentError(null);
+          }
+        }}
+      >
+        <DialogContent
+          title="Assign Package"
+          description={assignSchool ? `Select an existing package for ${assignSchool.name}.` : undefined}
+          className="flex max-h-[85vh] flex-col"
+        >
+          <DialogClose onClick={() => {
+            if (!assignPackageMutation.isPending) setAssignSchool(null);
+          }} />
+          {assignSchool && (
+            <form onSubmit={handlePackageAssignment} className="space-y-4">
+              {assignmentError && (
+                <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+                  {assignmentError}
+                </div>
+              )}
+              <div className="rounded-lg border bg-muted/30 p-3 text-sm">
+                <p className="font-medium">{assignSchool.name}</p>
+                <p className="text-muted-foreground">
+                  Current package: {assignSchool.packageName || 'None'} · Status: {assignSchool.subscriptionStatus || 'No subscription'}
+                  {assignSchool.subscriptionEndDate
+                    ? ` · Ends ${new Date(assignSchool.subscriptionEndDate).toLocaleDateString()}`
+                    : ''}
+                </p>
+              </div>
+              <div className="space-y-2">
+                <label htmlFor="assignment-package" className="text-sm font-medium">
+                  Package <span className="text-red-500">*</span>
+                </label>
+                {packagesLoading ? (
+                  <Skeleton className="h-10 w-full" />
+                ) : packagesError ? (
+                  <div className="flex items-center justify-between gap-2 text-sm text-red-600">
+                    <span>Could not load packages from the platform.</span>
+                    <Button type="button" variant="outline" size="sm" onClick={() => refetchPackages()}>
+                      Retry
+                    </Button>
+                  </div>
+                ) : packages.length === 0 ? (
+                  <p className="rounded-md border p-3 text-sm text-muted-foreground">
+                    No active packages are available to assign.
+                  </p>
+                ) : (
+                  <select
+                    id="assignment-package"
+                    required
+                    value={selectedPackageId}
+                    onChange={e => setSelectedPackageId(e.target.value)}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm text-foreground"
+                  >
+                    <option value="">Choose a package</option>
+                    {packages.map(pkg => (
+                      <option key={pkg.id} value={pkg.id}>{pkg.displayName} — {formatTsh(pkg.price)} / {pkg.billingPeriod}</option>
+                    ))}
+                  </select>
+                )}
+              </div>
+              {selectedPackage && (
+                <div className="rounded-lg border p-3">
+                  <p className="font-medium">{selectedPackage.displayName}</p>
+                  {selectedPackage.description && <p className="mt-1 text-sm text-muted-foreground">{selectedPackage.description}</p>}
+                  <p className="mt-2 text-sm">
+                    {formatTsh(selectedPackage.price)} / {selectedPackage.billingPeriod} · Starts today; payment remains pending until verified.
+                  </p>
+                  {selectedPackage.limits?.length > 0 && (
+                    <ul className="mt-2 space-y-1 text-sm text-muted-foreground">
+                      {selectedPackage.limits.map(limit => (
+                        <li key={limit.id}>
+                          {limit.limitName}: {limit.maxValue}{limit.unit ? ` ${limit.unit}` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+              <div className="flex justify-end gap-2 border-t pt-4">
+                <Button type="button" variant="outline" disabled={assignPackageMutation.isPending} onClick={() => setAssignSchool(null)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={
+                  assignPackageMutation.isPending ||
+                  packagesLoading ||
+                  packagesError ||
+                  packages.length === 0 ||
+                  !selectedPackageId
+                }>
+                  {assignPackageMutation.isPending ? 'Assigning...' : 'Confirm and Assign Package'}
+                </Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-

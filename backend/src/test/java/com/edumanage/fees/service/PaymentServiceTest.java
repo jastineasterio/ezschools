@@ -39,7 +39,8 @@ class PaymentServiceTest {
                 studentProfileRepository,
                 financialCategoryRepository,
                 financialTransactionRepository,
-                mock(com.edumanage.audit.service.AuditLogService.class)
+                mock(com.edumanage.audit.service.AuditLogService.class),
+                mock(com.edumanage.security.AccessGuard.class)
         );
     }
 

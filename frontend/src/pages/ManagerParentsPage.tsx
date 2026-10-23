@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getParents, createParent, updateParent } from '@/services/people';
+import { getParents, createParent, updateParent, getStudents, getParentStudents, createStudentParent, deleteStudentParent } from '@/services/people';
 import type { ParentResponse, CreateParentRequest } from '@/types/academic';
 import type { PaginatedResponse } from '@/types/api';
 import { Card } from '@/components/ui/Card';
@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
-import { Plus, MoreVertical } from 'lucide-react';
+import { Plus, MoreVertical, Link2 } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const parentSchema = z.object({
@@ -39,14 +39,27 @@ const genderOptions = [
 ];
 
 export function ManagerParentsPage() {
+  const queryClient = useQueryClient();
   const [page, setPage] = useState(0);
+  const [formError, setFormError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
   const [editingParent, setEditingParent] = useState<ParentResponse | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
-  const queryClient = useQueryClient();
+  const [assignParent, setAssignParent] = useState<ParentResponse | null>(null);
+  const [studentSearch, setStudentSearch] = useState('');
+  const [assigned, setAssigned] = useState<any[]>([]);
+  const { data: studentsData } = useQuery({
+    queryKey: ['students-all'],
+    queryFn: async () => getStudents(0, 200),
+    enabled: !!assignParent,
+  });
 
-  const { data, isLoading } = useQuery({
+  const loadAssigned = async (parentId: number) => {
+    const res = await getParentStudents(parentId);
+    setAssigned(res || []);
+  };
+
+  const { data, isLoading, isError, error } = useQuery({
     queryKey: ['parents', page, search],
     queryFn: async () => {
       const result = await getParents(page, 10);
@@ -171,6 +184,11 @@ export function ManagerParentsPage() {
               <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
+        ) : isError ? (
+          <Alert variant="destructive">
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error instanceof Error ? error.message : 'Failed to load parents'}</AlertDescription>
+          </Alert>
         ) : (
           <>
             <div className="rounded-lg border">
@@ -210,6 +228,9 @@ export function ManagerParentsPage() {
                         >
                           <DropdownMenuItem onClick={() => handleEdit(parent)}>
                             Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => { setAssignParent(parent); loadAssigned(parent.id); }}>
+                            Assign Students
                           </DropdownMenuItem>
                         </DropdownMenu>
                       </TableCell>
@@ -305,6 +326,41 @@ export function ManagerParentsPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!assignParent} onOpenChange={(o) => { if (!o) setAssignParent(null); }}>
+        <DialogContent title="Assign Students" description={assignParent ? `Link students to ${assignParent.firstName} ${assignParent.lastName}` : ''}>
+          <div className="space-y-4">
+            <Input placeholder="Search students by name or admission no..." value={studentSearch} onChange={(e) => setStudentSearch(e.target.value)} />
+            <div className="max-h-60 overflow-auto border rounded">
+              {(studentsData?.content || [])
+                .filter((s: any) => {
+                  const q = studentSearch.toLowerCase();
+                  if (!q) return true;
+                  const name = `${s.firstName || ''} ${s.lastName || ''}`.toLowerCase();
+                  return name.includes(q) || (s.admissionNumber || '').toLowerCase().includes(q);
+                })
+                .map((s: any) => (
+                  <div key={s.id} className="flex items-center justify-between p-2 border-b">
+                    <span>{s.firstName} {s.lastName} ({s.admissionNumber})</span>
+                    <Button size="sm" onClick={async () => {
+                      await createStudentParent({ studentId: s.id, parentId: assignParent!.id, relationshipType: 'GUARDIAN' });
+                      await loadAssigned(assignParent!.id);
+                    }}>Link</Button>
+                  </div>
+                ))}
+            </div>
+            <div>
+              <h4 className="font-medium mb-2">Assigned Students</h4>
+              {assigned.length === 0 && <p className="text-sm text-muted-foreground">None</p>}
+              {assigned.map((r: any) => (
+                <div key={r.id} className="flex items-center justify-between p-2 border-b">
+                  <span>{r.studentName || r.studentId}</span>
+                  <Button size="sm" variant="destructive" onClick={async () => { await deleteStudentParent(r.id); await loadAssigned(assignParent!.id); }}>Remove</Button>
+                </div>
+              ))}
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

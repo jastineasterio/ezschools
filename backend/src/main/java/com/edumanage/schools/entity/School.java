@@ -38,6 +38,9 @@ public class School extends UuidBaseEntity {
     @Column(name = "district", length = 100)
     private String district;
 
+    @Column(name = "time_zone", nullable = false, length = 64)
+    private String timeZone = "UTC";
+
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
 

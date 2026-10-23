@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/school/library/books")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_LIBRARIAN', 'ROLE_MANAGER', 'ROLE_SUPER_ADMIN')")
 @RequiredArgsConstructor
 public class BookController {
 

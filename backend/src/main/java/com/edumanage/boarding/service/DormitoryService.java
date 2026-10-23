@@ -8,6 +8,8 @@ import com.edumanage.boarding.dto.CreateDormitoryRequest;
 import com.edumanage.boarding.dto.DormitoryDto;
 import com.edumanage.boarding.entity.Dormitory;
 import com.edumanage.boarding.repository.DormitoryRepository;
+import com.edumanage.boarding.repository.RoomRepository;
+import com.edumanage.users.repository.UserRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
@@ -23,10 +25,15 @@ import java.util.stream.Collectors;
 public class DormitoryService {
 
     private final DormitoryRepository dormitoryRepository;
+    private final RoomRepository roomRepository;
+    private final UserRepository userRepository;
     private final AuditLogService auditLogService;
 
-    public DormitoryService(DormitoryRepository dormitoryRepository, AuditLogService auditLogService) {
+    public DormitoryService(DormitoryRepository dormitoryRepository, RoomRepository roomRepository,
+                            UserRepository userRepository, AuditLogService auditLogService) {
         this.dormitoryRepository = dormitoryRepository;
+        this.roomRepository = roomRepository;
+        this.userRepository = userRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -35,17 +42,16 @@ public class DormitoryService {
         Page<Dormitory> page;
         if (tenantId != null) {
             page = dormitoryRepository.findBySchoolId(tenantId, pageable);
-        } else {
+        } else if (TenantContext.isSuperAdmin()) {
             page = dormitoryRepository.findAll(pageable);
+        } else {
+            throw new ForbiddenException("A school assignment is required");
         }
         return PageResponse.from(page.map(this::mapToDto));
     }
 
     public List<DormitoryDto> listActiveDormitories() {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
         return dormitoryRepository.findBySchoolIdAndStatus(tenantId, "ACTIVE").stream()
                 .map(this::mapToDto)
                 .collect(Collectors.toList());
@@ -58,10 +64,8 @@ public class DormitoryService {
 
     @Transactional
     public DormitoryDto createDormitory(CreateDormitoryRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
+        validateWarden(request.getWardenId(), tenantId);
 
         if (dormitoryRepository.existsBySchoolIdAndName(tenantId, request.getName())) {
             throw new ConflictException("Dormitory with this name already exists");
@@ -87,6 +91,7 @@ public class DormitoryService {
     @Transactional
     public DormitoryDto updateDormitory(Long id, CreateDormitoryRequest request) {
         var dormitory = findByIdAndSchool(id);
+        validateWarden(request.getWardenId(), dormitory.getSchoolId());
 
         if (!dormitory.getName().equals(request.getName()) &&
                 dormitoryRepository.existsBySchoolIdAndName(dormitory.getSchoolId(), request.getName())) {
@@ -115,6 +120,11 @@ public class DormitoryService {
     @Transactional
     public void deleteDormitory(Long id) {
         var dormitory = findByIdAndSchool(id);
+        boolean hasRooms = roomRepository.findBySchoolIdAndDormitoryId(dormitory.getSchoolId(), id).stream()
+                .anyMatch(room -> !room.isDeleted());
+        if (hasRooms) {
+            throw new ConflictException("Delete or move the dormitory's rooms before deleting it");
+        }
         dormitory.setDeletedAt(java.time.LocalDateTime.now());
         dormitoryRepository.save(dormitory);
 
@@ -130,6 +140,15 @@ public class DormitoryService {
         return dormitoryRepository.findBySchoolIdAndId(tenantId, id)
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Dormitory not found"));
+    }
+
+    private void validateWarden(Long wardenId, Long schoolId) {
+        if (wardenId == null) {
+            return;
+        }
+        userRepository.findById(wardenId)
+                .filter(user -> !user.isDeleted() && schoolId.equals(user.getSchoolId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Warden not found in this school"));
     }
 
     private DormitoryDto mapToDto(Dormitory dormitory) {

@@ -12,6 +12,7 @@ import com.edumanage.examinations.repository.ExaminationRepository;
 import com.edumanage.subjects.repository.SubjectRepository;
 import com.edumanage.classes.repository.ClassRepository;
 import com.edumanage.streams.repository.StreamRepository;
+import com.edumanage.streamsubjects.repository.StreamSubjectAssignmentRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
@@ -32,19 +33,22 @@ public class ExaminationSubjectService {
     private final ClassRepository classRepository;
     private final StreamRepository streamRepository;
     private final AuditLogService auditLogService;
+    private final StreamSubjectAssignmentRepository streamSubjectAssignmentRepository;
 
     public ExaminationSubjectService(ExaminationSubjectRepository examinationSubjectRepository,
                                      ExaminationRepository examinationRepository,
                                      SubjectRepository subjectRepository,
                                      ClassRepository classRepository,
                                      StreamRepository streamRepository,
-                                     AuditLogService auditLogService) {
+                                     AuditLogService auditLogService,
+                                     StreamSubjectAssignmentRepository streamSubjectAssignmentRepository) {
         this.examinationSubjectRepository = examinationSubjectRepository;
         this.examinationRepository = examinationRepository;
         this.subjectRepository = subjectRepository;
         this.classRepository = classRepository;
         this.streamRepository = streamRepository;
         this.auditLogService = auditLogService;
+        this.streamSubjectAssignmentRepository = streamSubjectAssignmentRepository;
     }
 
     public PageResponse<ExaminationSubjectDto> listByExamination(Long examinationId, Pageable pageable) {
@@ -88,6 +92,7 @@ public class ExaminationSubjectService {
         }
 
         var subject = subjectRepository.findById(request.getSubjectId())
+                .filter(value -> !value.isDeleted() && "ACTIVE".equals(value.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         if (!tenantId.equals(subject.getSchoolId())) {
@@ -95,6 +100,7 @@ public class ExaminationSubjectService {
         }
 
         var clazz = classRepository.findById(request.getClassId())
+                .filter(value -> !value.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
         if (!tenantId.equals(clazz.getSchoolId())) {
@@ -103,10 +109,13 @@ public class ExaminationSubjectService {
 
         if (request.getStreamId() != null) {
             var stream = streamRepository.findById(request.getStreamId())
+                    .filter(value -> !value.isDeleted())
                     .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
             if (!tenantId.equals(stream.getSchoolId())) {
                 throw new ForbiddenException("Stream does not belong to this school");
             }
+            validateStreamSubject(tenantId, examination.getAcademicYearId(), request.getClassId(),
+                    stream.getClassId(), request.getStreamId(), request.getSubjectId());
         }
 
         if (examinationSubjectRepository.findByExaminationIdAndSubjectIdAndClassIdAndStreamId(
@@ -146,6 +155,7 @@ public class ExaminationSubjectService {
         }
 
         var subject = subjectRepository.findById(request.getSubjectId())
+                .filter(value -> !value.isDeleted() && "ACTIVE".equals(value.getStatus()))
                 .orElseThrow(() -> new ResourceNotFoundException("Subject not found"));
 
         var examination = examinationRepository.findById(examinationSubject.getExaminationId()).orElse(null);
@@ -154,6 +164,7 @@ public class ExaminationSubjectService {
         }
 
         var clazz = classRepository.findById(request.getClassId())
+                .filter(value -> !value.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
         if (examination != null && !examination.getSchoolId().equals(clazz.getSchoolId())) {
@@ -162,10 +173,16 @@ public class ExaminationSubjectService {
 
         if (request.getStreamId() != null) {
             var stream = streamRepository.findById(request.getStreamId())
+                    .filter(value -> !value.isDeleted())
                     .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
             if (examination != null && !examination.getSchoolId().equals(stream.getSchoolId())) {
                 throw new ForbiddenException("Stream does not belong to this school");
             }
+            if (examination == null) {
+                throw new ResourceNotFoundException("Examination not found");
+            }
+            validateStreamSubject(examination.getSchoolId(), examination.getAcademicYearId(),
+                    request.getClassId(), stream.getClassId(), request.getStreamId(), request.getSubjectId());
         }
 
         examinationSubject.setSubjectId(request.getSubjectId());
@@ -223,5 +240,16 @@ public class ExaminationSubjectService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
+    }
+
+    private void validateStreamSubject(Long schoolId, Long academicYearId, Long classId, Long streamClassId,
+                                       Long streamId, Long subjectId) {
+        if (!classId.equals(streamClassId)) {
+            throw new BadRequestException("Stream does not belong to the selected class");
+        }
+        if (!streamSubjectAssignmentRepository.existsBySchoolIdAndClassIdAndStreamIdAndAcademicYearIdAndSubjectId(
+                schoolId, classId, streamId, academicYearId, subjectId)) {
+            throw new BadRequestException("Subject is not configured for the selected class stream and year");
+        }
     }
 }

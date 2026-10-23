@@ -51,6 +51,10 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<Map<String, Object>> handleUnreadableMessage(HttpMessageNotReadableException ex,
                                                                        HttpServletRequest request) {
+        Throwable cause = ex.getMostSpecificCause();
+        logger.warn("Malformed request body at {} (cause type: {})",
+                request.getRequestURI(), cause.getClass().getSimpleName());
+
         var body = new HashMap<String, Object>();
         body.put("success", false);
         body.put("message", "Malformed request body");

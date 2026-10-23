@@ -1,6 +1,9 @@
 package com.edumanage.tenant;
 
+import com.edumanage.exception.ForbiddenException;
 import org.springframework.security.core.context.SecurityContextHolder;
+
+import java.util.Objects;
 
 public final class TenantContext {
 
@@ -14,6 +17,20 @@ public final class TenantContext {
 
     public static Long getTenantId() {
         return CONTEXT.get();
+    }
+
+    public static Long requireTenantId() {
+        Long tenantId = getTenantId();
+        if (tenantId == null) {
+            throw new ForbiddenException("A school assignment is required");
+        }
+        return tenantId;
+    }
+
+    public static void assertTenantAccess(Long schoolId) {
+        if (!isSuperAdmin() && !Objects.equals(getTenantId(), schoolId)) {
+            throw new ForbiddenException("Access denied");
+        }
     }
 
     public static void clear() {

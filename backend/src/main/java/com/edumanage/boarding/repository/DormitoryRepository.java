@@ -14,5 +14,6 @@ public interface DormitoryRepository extends JpaRepository<Dormitory, Long> {
     Page<Dormitory> findBySchoolId(Long schoolId, Pageable pageable);
     Optional<Dormitory> findBySchoolIdAndId(Long schoolId, Long id);
     List<Dormitory> findBySchoolIdAndStatus(Long schoolId, String status);
+    List<Dormitory> findBySchoolIdAndWardenId(Long schoolId, Long wardenId);
     boolean existsBySchoolIdAndName(Long schoolId, String name);
 }

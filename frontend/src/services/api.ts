@@ -1,6 +1,7 @@
 import axios, {
   type AxiosInstance,
   type AxiosError,
+  type AxiosRequestConfig,
   type InternalAxiosRequestConfig,
   type AxiosResponse,
 } from 'axios';
@@ -14,6 +15,64 @@ import type {
 } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
+type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+let currentUserRequest: Promise<CurrentUserResponse> | null = null;
+
+export async function unwrapApiResponse<T>(
+  request: Promise<{ data: ApiResponse<T> }>
+): Promise<T> {
+  const response = await request;
+  if (response.data.data === undefined) {
+    throw new Error(response.data.message || 'The server returned an empty response');
+  }
+  return response.data.data;
+}
+
+export function createApiResponseClient(client: AxiosInstance) {
+  const unwrap = async <T>(
+    request: Promise<{ data: ApiResponse<T> }>
+  ): Promise<{ data: T }> => ({
+    data: await unwrapApiResponse(request),
+  });
+
+  return {
+    get: <T>(url: string, config?: AxiosRequestConfig) =>
+      unwrap(client.get<ApiResponse<T>>(url, config)),
+    post: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
+      unwrap(client.post<ApiResponse<T>>(url, body, config)),
+    put: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
+      unwrap(client.put<ApiResponse<T>>(url, body, config)),
+    patch: <T>(url: string, body?: unknown, config?: AxiosRequestConfig) =>
+      unwrap(client.patch<ApiResponse<T>>(url, body, config)),
+    delete: <T = void>(url: string, config?: AxiosRequestConfig) =>
+      unwrap(client.delete<ApiResponse<T>>(url, config)),
+  };
+}
+
+export function getApiErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<ApiError>(error)) {
+    const response = error.response?.data;
+    const statusPrefix = error.response?.status
+      ? `Request failed (${error.response.status}): `
+      : '';
+    if (response?.errors) {
+      const details = Object.values(response.errors).filter(Boolean);
+      if (details.length > 0) {
+        return `${statusPrefix}${details.join(', ')}`;
+      }
+    }
+    if (response?.message) {
+      return `${statusPrefix}${response.message}`;
+    }
+    if (statusPrefix) {
+      return `${statusPrefix}${error.message}`;
+    }
+  }
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return fallback;
+}
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
@@ -39,13 +98,14 @@ api.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (error: AxiosError<ApiError>) => {
     const originalRequest = error.config;
+    const retryableRequest = originalRequest as RetryableAxiosRequestConfig | undefined;
 
     if (
       error.response?.status === 401 &&
-      originalRequest &&
-      !(originalRequest as any)._retry
+      retryableRequest &&
+      !retryableRequest._retry
     ) {
-      (originalRequest as any)._retry = true;
+      retryableRequest._retry = true;
 
       try {
         const refreshTokenValue = localStorage.getItem('refresh_token');
@@ -67,16 +127,22 @@ api.interceptors.response.use(
           localStorage.setItem('access_token', tokenData.accessToken);
           localStorage.setItem('refresh_token', tokenData.refreshToken);
 
-          if (originalRequest.headers) {
-            originalRequest.headers.Authorization =
+          if (retryableRequest.headers) {
+            retryableRequest.headers.Authorization =
               `Bearer ${tokenData.accessToken}`;
           }
 
-          return api(originalRequest);
+          return api(retryableRequest);
         }
-      } catch {
-        clearTokens();
-        window.location.href = '/login';
+      } catch (refreshError) {
+        if (
+          axios.isAxiosError(refreshError) &&
+          refreshError.response?.status === 401
+        ) {
+          clearTokens();
+          window.location.href = '/login';
+        }
+        return Promise.reject(refreshError);
       }
     }
 
@@ -134,25 +200,41 @@ export async function logout(): Promise<void> {
   }
 }
 
-export async function getCurrentUser(): Promise<CurrentUserResponse> {
-  const response = await api.get<ApiResponse<CurrentUserResponse>>('/auth/me');
+export function getCurrentUser(): Promise<CurrentUserResponse> {
+  if (!currentUserRequest) {
+    const request = api
+      .get<ApiResponse<CurrentUserResponse>>('/auth/me')
+      .then((response) => {
+        if (!response.data.data) {
+          throw new Error(
+            response.data.message || 'Failed to fetch current user'
+          );
+        }
 
-  if (!response.data.data) {
-    throw new Error(response.data.message || 'Failed to fetch current user');
+        return response.data.data;
+      })
+      .finally(() => {
+        if (currentUserRequest === request) {
+          currentUserRequest = null;
+        }
+      });
+    currentUserRequest = request;
   }
 
-  return response.data.data;
+  return currentUserRequest;
 }
 
 export function setTokens(
   accessToken: string,
   refreshToken: string
 ): void {
+  currentUserRequest = null;
   localStorage.setItem('access_token', accessToken);
   localStorage.setItem('refresh_token', refreshToken);
 }
 
 export function clearTokens(): void {
+  currentUserRequest = null;
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
 }

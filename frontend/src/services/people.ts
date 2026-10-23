@@ -1,5 +1,7 @@
-import { api } from './api';
+import { api as http, createApiResponseClient } from './api';
 import type { PaginatedResponse } from '@/types/api';
+
+const api = createApiResponseClient(http);
 
 export interface Student {
   id: number;
@@ -63,11 +65,16 @@ export interface UpdateStudentRequest {
 
 export interface Teacher {
   id: number;
+  uuid: string;
   userId: number;
+  schoolId: number;
+  firstName?: string | null;
+  lastName?: string | null;
+  email?: string | null;
   employeeNumber: string | null;
   gender: string | null;
   dateOfBirth: string | null;
-  employmentStatus: string | null;
+  employmentStatus: string;
   qualification: string | null;
   experienceYears: number | null;
   photoUrl: string | null;
@@ -100,10 +107,15 @@ export interface UpdateTeacherRequest {
 export interface TeacherAssignment {
   id: number;
   teacherId: number;
+  teacherName?: string;
   subjectId: number;
+  subjectName?: string;
   classId: number;
+  className?: string;
   streamId: number | null;
+  streamName?: string | null;
   academicYearId: number;
+  academicYearName?: string;
   isClassTeacher: boolean;
   createdAt: string;
   updatedAt: string;
@@ -116,6 +128,15 @@ export interface CreateTeacherAssignmentRequest {
   streamId?: number;
   academicYearId: number;
   isClassTeacher?: boolean;
+}
+
+export interface CreateTeacherAssignmentBatchRequest {
+  teacherId: number;
+  academicYearId: number;
+  classId: number;
+  streamId?: number;
+  subjectIds: number[];
+  classTeacher?: boolean;
 }
 
 export interface UpdateTeacherAssignmentRequest {
@@ -223,7 +244,7 @@ export interface UpdateEnrollmentRequest {
   streamId?: number;
   status?: string;
   startDate: string;
-  endDate: string;
+  endDate?: string;
 }
 
 export async function getStudents(page?: number, size?: number) {
@@ -302,6 +323,11 @@ export async function getTeacherAssignmentsByTeacher(teacherId: number) {
 
 export async function createTeacherAssignment(data: CreateTeacherAssignmentRequest) {
   const response = await api.post<TeacherAssignment>('/school/teacher-assignments', data);
+  return response.data;
+}
+
+export async function createTeacherAssignmentsBatch(data: CreateTeacherAssignmentBatchRequest) {
+  const response = await api.post<TeacherAssignment[]>('/school/teacher-assignments/batch', data);
   return response.data;
 }
 

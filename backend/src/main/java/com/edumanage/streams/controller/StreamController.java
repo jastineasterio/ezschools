@@ -24,8 +24,9 @@ public class StreamController {
     private final StreamService streamService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<StreamDto>>> list(Pageable pageable) {
-        var streams = streamService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<StreamDto>>> list(
+            Pageable pageable, @RequestParam(required = false) String search) {
+        var streams = streamService.list(pageable, search);
         return ResponseEntity.ok(new ApiResponse<>(true, "Streams fetched", streams, null, LocalDateTime.now(), "/api/school/streams"));
     }
 

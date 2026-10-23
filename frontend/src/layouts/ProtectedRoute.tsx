@@ -1,11 +1,13 @@
 import { Outlet, Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 import { useAuth } from '@/store/AuthContext';
 import { Loader2 } from 'lucide-react';
-import { useEffect, useState } from 'react';
-import { getCurrentUser } from '@/services/api';
+import { Button } from '@/components/ui/Button';
+import { Alert } from '@/components/ui/Alert';
+import { getDashboardPath, hasRole } from '@/lib/roles';
 
 interface ProtectedRouteProps {
-  children?: React.ReactNode;
+  children?: ReactNode;
   roles?: string[];
 }
 
@@ -13,33 +15,23 @@ export function ProtectedRoute({
   children,
   roles,
 }: ProtectedRouteProps) {
-  const { user, isLoading, setUser } = useAuth();
-  const [checking, setChecking] = useState(true);
+  const { user, isLoading, sessionError, retrySession } = useAuth();
 
-  useEffect(() => {
-    const token = localStorage.getItem('access_token');
-
-    if (token && !user) {
-      getCurrentUser()
-        .then((currentUser) => {
-          setUser(currentUser);
-        })
-        .catch(() => {
-          localStorage.removeItem('access_token');
-          localStorage.removeItem('refresh_token');
-        })
-        .finally(() => {
-          setChecking(false);
-        });
-    } else {
-      setChecking(false);
-    }
-  }, [user, setUser]);
-
-  if (isLoading || checking) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (sessionError) {
+    return (
+      <div className="flex min-h-screen items-center justify-center px-4">
+        <div className="w-full max-w-md space-y-4">
+          <Alert variant="destructive" message={sessionError} />
+          <Button onClick={() => void retrySession()}>Retry</Button>
+        </div>
       </div>
     );
   }
@@ -51,15 +43,9 @@ export function ProtectedRoute({
   if (
     roles &&
     roles.length > 0 &&
-    !roles.some((requiredRole) =>
-      (user.roles ?? []).some((role) => {
-        const normalizedRequired = requiredRole.trim().toUpperCase();
-        const normalizedUserRole = role.trim().toUpperCase();
-        return normalizedUserRole === normalizedRequired || normalizedUserRole === `ROLE_${normalizedRequired}`;
-      })
-    )
+    !roles.some((requiredRole) => hasRole(user.roles, requiredRole))
   ) {
-    return <Navigate to="/login" replace />;
+    return <Navigate to={getDashboardPath(user.roles)} replace />;
   }
 
   return <>{children ?? <Outlet />}</>;

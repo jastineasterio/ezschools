@@ -46,6 +46,7 @@ import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
+import { getApiErrorMessage } from '@/services/api';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/Tabs';
 import {
   Plus,
@@ -129,8 +130,12 @@ export function ManagerBoardingPage() {
   const [selectedDormitory, setSelectedDormitory] = useState<number | null>(null);
   const [selectedRoom, setSelectedRoom] = useState<number | null>(null);
   const [attendanceDate, setAttendanceDate] = useState<string>('');
+  const [boardingSearch, setBoardingSearch] = useState('');
+  const handleRequestError = (error: unknown) => {
+    setFormError(getApiErrorMessage(error, 'Boarding request failed'));
+  };
 
-  const { data: dormitories, isLoading: dormLoading } = useQuery({
+  const { data: dormitories, isLoading: dormLoading, error: dormError } = useQuery({
     queryKey: ['boarding-dormitories'],
     queryFn: async () => {
       const result = await getDormitories(0, 50);
@@ -138,7 +143,7 @@ export function ManagerBoardingPage() {
     },
   });
 
-  const { data: rooms, isLoading: roomLoading } = useQuery({
+  const { data: rooms, isLoading: roomLoading, error: roomError } = useQuery({
     queryKey: ['boarding-rooms', selectedDormitory],
     queryFn: async () => {
       if (!selectedDormitory) return [];
@@ -147,7 +152,7 @@ export function ManagerBoardingPage() {
     enabled: !!selectedDormitory,
   });
 
-  const { data: beds, isLoading: bedLoading } = useQuery({
+  const { data: beds, isLoading: bedLoading, error: bedError } = useQuery({
     queryKey: ['boarding-beds', selectedRoom],
     queryFn: async () => {
       if (!selectedRoom) return [];
@@ -156,7 +161,7 @@ export function ManagerBoardingPage() {
     enabled: !!selectedRoom,
   });
 
-  const { data: boardingStudents, isLoading: studentsLoading } = useQuery({
+  const { data: boardingStudents, isLoading: studentsLoading, error: studentsError } = useQuery({
     queryKey: ['boarding-students'],
     queryFn: async () => {
       const result = await getBoardingStudents(0, 50);
@@ -164,14 +169,14 @@ export function ManagerBoardingPage() {
     },
   });
 
-  useQuery({
+  const { error: activeStudentsError } = useQuery({
     queryKey: ['active-boarding-students'],
     queryFn: async () => {
       return getActiveBoardingStudents();
     },
   });
 
-  const { data: attendance, isLoading: attendanceLoading } = useQuery({
+  const { data: attendance, isLoading: attendanceLoading, error: attendanceError } = useQuery({
     queryKey: ['boarding-attendance', selectedDormitory, attendanceDate],
     queryFn: async () => {
       if (!selectedDormitory || !attendanceDate) return [];
@@ -184,20 +189,23 @@ export function ManagerBoardingPage() {
     mutationFn: createDormitory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-dormitories'] });
+      setFormError(null);
       setDormOpen(false);
       setEditingDorm(null);
-      setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const updateDormMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateDormitoryRequest }) => updateDormitory(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-dormitories'] });
+      setFormError(null);
       setDormOpen(false);
       setEditingDorm(null);
       setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const deleteDormMutation = useMutation({
@@ -205,26 +213,30 @@ export function ManagerBoardingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-dormitories'] });
     },
+    onError: handleRequestError,
   });
 
   const createRoomMutation = useMutation({
     mutationFn: createRoom,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-rooms'] });
+      setFormError(null);
       setRoomOpen(false);
       setEditingRoom(null);
-      setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const updateRoomMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateRoomRequest }) => updateRoom(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-rooms'] });
+      setFormError(null);
       setRoomOpen(false);
       setEditingRoom(null);
       setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const deleteRoomMutation = useMutation({
@@ -232,26 +244,30 @@ export function ManagerBoardingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-rooms'] });
     },
+    onError: handleRequestError,
   });
 
   const createBedMutation = useMutation({
     mutationFn: createBed,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-beds'] });
+      setFormError(null);
       setBedOpen(false);
       setEditingBed(null);
-      setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const updateBedMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateBedRequest }) => updateBed(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-beds'] });
+      setFormError(null);
       setBedOpen(false);
       setEditingBed(null);
       setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const deleteBedMutation = useMutation({
@@ -259,6 +275,7 @@ export function ManagerBoardingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-beds'] });
     },
+    onError: handleRequestError,
   });
 
   const allocateMutation = useMutation({
@@ -268,9 +285,10 @@ export function ManagerBoardingPage() {
       queryClient.invalidateQueries({ queryKey: ['active-boarding-students'] });
       queryClient.invalidateQueries({ queryKey: ['boarding-beds'] });
       queryClient.invalidateQueries({ queryKey: ['boarding-rooms'] });
-      setAllocateOpen(false);
       setFormError(null);
+      setAllocateOpen(false);
     },
+    onError: handleRequestError,
   });
 
   const releaseMutation = useMutation({
@@ -280,27 +298,32 @@ export function ManagerBoardingPage() {
       queryClient.invalidateQueries({ queryKey: ['active-boarding-students'] });
       queryClient.invalidateQueries({ queryKey: ['boarding-beds'] });
       queryClient.invalidateQueries({ queryKey: ['boarding-rooms'] });
+      setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const createAttendanceMutation = useMutation({
     mutationFn: createBoardingAttendance,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-attendance'] });
+      setFormError(null);
       setAttendanceOpen(false);
       setEditingAttendance(null);
-      setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const updateAttendanceMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: CreateBoardingAttendanceRequest }) => updateBoardingAttendance(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-attendance'] });
+      setFormError(null);
       setAttendanceOpen(false);
       setEditingAttendance(null);
       setFormError(null);
     },
+    onError: handleRequestError,
   });
 
   const deleteAttendanceMutation = useMutation({
@@ -308,6 +331,7 @@ export function ManagerBoardingPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['boarding-attendance'] });
     },
+    onError: handleRequestError,
   });
 
   const {
@@ -500,6 +524,26 @@ export function ManagerBoardingPage() {
     }
   };
 
+  const matchesBoardingSearch = (...values: unknown[]) => {
+    const query = boardingSearch.trim().toLowerCase();
+    return !query || values.some((value) => String(value ?? '').toLowerCase().includes(query));
+  };
+  const filteredDormitories = (dormitories || []).filter((dorm) =>
+    matchesBoardingSearch(dorm.name, dorm.gender, dorm.status)
+  );
+  const filteredRooms = (rooms || []).filter((room) =>
+    matchesBoardingSearch(room.roomNumber, room.dormitoryName, room.status)
+  );
+  const filteredBeds = (beds || []).filter((bed) =>
+    matchesBoardingSearch(bed.bedNumber, bed.roomNumber, bed.studentName, bed.status)
+  );
+  const filteredBoardingStudents = (boardingStudents || []).filter((record) =>
+    matchesBoardingSearch(record.studentName, record.admissionNumber, record.dormitoryName, record.roomNumber, record.status)
+  );
+  const filteredAttendance = (attendance || []).filter((record) =>
+    matchesBoardingSearch(record.studentName, record.admissionNumber, record.dormitoryName, record.attendanceDate, record.status, record.remarks)
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -508,6 +552,31 @@ export function ManagerBoardingPage() {
           <p className="mt-1 text-muted-foreground">Manage dormitories, rooms, beds, and boarding attendance</p>
         </div>
       </div>
+
+      {[dormError, roomError, bedError, studentsError, activeStudentsError, attendanceError].some(Boolean) && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load boarding data</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(
+              [dormError, roomError, bedError, studentsError, activeStudentsError, attendanceError].find(Boolean),
+              'Please retry the request.'
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
+      {formError && !dormOpen && !roomOpen && !bedOpen && !allocateOpen && !attendanceOpen && (
+        <Alert variant="destructive">
+          <AlertTitle>Request failed</AlertTitle>
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
+
+      <Input
+        placeholder="Search boarding records..."
+        value={boardingSearch}
+        onChange={(event) => setBoardingSearch(event.target.value)}
+        className="max-w-md"
+      />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} defaultValue="dormitories">
         <TabsList>
@@ -545,14 +614,14 @@ export function ManagerBoardingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {dormitories?.length === 0 && (
+                    {filteredDormitories.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           No dormitories found
                         </TableCell>
                       </TableRow>
                     )}
-                    {dormitories?.map((dorm: DormitoryResponse) => (
+                    {filteredDormitories.map((dorm: DormitoryResponse) => (
                       <TableRow key={dorm.id}>
                         <TableCell className="font-medium">{dorm.name}</TableCell>
                         <TableCell>{dorm.gender || '-'}</TableCell>
@@ -626,14 +695,14 @@ export function ManagerBoardingPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                    {selectedDormitory && rooms?.length === 0 && (
+                    {selectedDormitory && filteredRooms.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           No rooms found
                         </TableCell>
                       </TableRow>
                     )}
-                    {rooms?.map((room: RoomResponse) => (
+                    {filteredRooms.map((room: RoomResponse) => (
                       <TableRow key={room.id}>
                         <TableCell className="font-medium">{room.roomNumber}</TableCell>
                         <TableCell>{room.dormitoryName || '-'}</TableCell>
@@ -716,14 +785,14 @@ export function ManagerBoardingPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                    {selectedRoom && beds?.length === 0 && (
+                    {selectedRoom && filteredBeds.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           No beds found
                         </TableCell>
                       </TableRow>
                     )}
-                    {beds?.map((bed: BedResponse) => (
+                    {filteredBeds.map((bed: BedResponse) => (
                       <TableRow key={bed.id}>
                         <TableCell className="font-medium">{bed.bedNumber}</TableCell>
                         <TableCell>{bed.roomNumber || '-'}</TableCell>
@@ -782,14 +851,14 @@ export function ManagerBoardingPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {boardingStudents?.length === 0 && (
+                    {filteredBoardingStudents.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center text-muted-foreground">
                           No boarding students found
                         </TableCell>
                       </TableRow>
                     )}
-                    {boardingStudents?.map((record: BoardingStudentResponse) => (
+                    {filteredBoardingStudents.map((record: BoardingStudentResponse) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{record.studentName || '-'}</TableCell>
                         <TableCell>{record.dormitoryName || '-'}</TableCell>
@@ -870,14 +939,14 @@ export function ManagerBoardingPage() {
                         </TableCell>
                       </TableRow>
                     )}
-                    {selectedDormitory && attendanceDate && attendance?.length === 0 && (
+                    {selectedDormitory && attendanceDate && filteredAttendance.length === 0 && (
                       <TableRow>
                         <TableCell colSpan={5} className="text-center text-muted-foreground">
                           No attendance records found
                         </TableCell>
                       </TableRow>
                     )}
-                    {attendance?.map((record: BoardingAttendanceResponse) => (
+                    {filteredAttendance.map((record: BoardingAttendanceResponse) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{record.studentName || '-'}</TableCell>
                         <TableCell>{record.attendanceDate}</TableCell>
@@ -1139,4 +1208,3 @@ export function ManagerBoardingPage() {
     </div>
   );
 }
-

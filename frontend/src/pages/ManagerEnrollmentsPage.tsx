@@ -3,8 +3,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { getEnrollments, createEnrollment, updateEnrollment } from '@/services/people';
-import type { StudentEnrollmentResponse, CreateStudentEnrollmentRequest } from '@/types/academic';
+import { getEnrollments, createEnrollment, updateEnrollment, getStudents } from '@/services/people';
+import type { Student, CreateEnrollmentRequest, UpdateEnrollmentRequest } from '@/services/people';
+import { getAcademicYears, getClasses, getStreamsByClass } from '@/services/academic';
+import type { AcademicYear, Class, Stream } from '@/services/academic';
+import type { StudentEnrollmentResponse } from '@/types/academic';
 import type { PaginatedResponse } from '@/types/api';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -18,6 +21,7 @@ import { Select } from '@/components/ui/Select';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import { Plus, MoreVertical } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 
 const enrollmentSchema = z.object({
   studentId: z.number().min(1, 'Student ID is required'),
@@ -48,16 +52,31 @@ export function ManagerEnrollmentsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: enrollmentsError, refetch: refetchEnrollments } = useQuery({
     queryKey: ['enrollments', page, search],
     queryFn: async () => {
       const result = await getEnrollments(page, 10);
       return result as PaginatedResponse<StudentEnrollmentResponse>;
     },
   });
+  const studentsQuery = useQuery({
+    queryKey: ['enrollment-students'],
+    queryFn: () => getStudents(0, 500),
+    enabled: open,
+  });
+  const yearsQuery = useQuery({
+    queryKey: ['enrollment-academic-years'],
+    queryFn: () => getAcademicYears(0, 500),
+    enabled: open,
+  });
+  const classesQuery = useQuery({
+    queryKey: ['enrollment-classes'],
+    queryFn: () => getClasses(0, 500),
+    enabled: open,
+  });
 
   const createMutation = useMutation({
-    mutationFn: (req: CreateStudentEnrollmentRequest) => createEnrollment(req as any),
+    mutationFn: (req: CreateEnrollmentRequest) => createEnrollment(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       setOpen(false);
@@ -67,8 +86,8 @@ export function ManagerEnrollmentsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateStudentEnrollmentRequest> }) =>
-      updateEnrollment(id, data as any),
+    mutationFn: ({ id, data: request }: { id: number; data: UpdateEnrollmentRequest }) =>
+      updateEnrollment(id, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       setOpen(false);
@@ -81,6 +100,8 @@ export function ManagerEnrollmentsPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<EnrollmentFormValues>({
     resolver: zodResolver(enrollmentSchema),
@@ -93,6 +114,12 @@ export function ManagerEnrollmentsPage() {
       startDate: '',
       endDate: '',
     },
+  });
+  const selectedClassId = watch('classId');
+  const streamsQuery = useQuery({
+    queryKey: ['enrollment-streams', selectedClassId],
+    queryFn: () => getStreamsByClass(selectedClassId),
+    enabled: open && Number.isInteger(selectedClassId) && selectedClassId > 0,
   });
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -132,14 +159,22 @@ export function ManagerEnrollmentsPage() {
       if (editingEnrollment) {
         await updateMutation.mutateAsync({
           id: editingEnrollment.id,
-          data: values,
+          data: { ...values, status: values.status || 'ENROLLED', endDate: values.endDate || undefined },
         });
       } else {
-        await createMutation.mutateAsync(values);
+        await createMutation.mutateAsync({ ...values, status: values.status || 'ENROLLED' });
       }
     } catch (err) {
       setFormError(err instanceof Error ? err.message : 'Operation failed');
     }
+  };
+  const retryOptions = () => {
+    void Promise.all([
+      studentsQuery.refetch(),
+      yearsQuery.refetch(),
+      classesQuery.refetch(),
+      streamsQuery.refetch(),
+    ]);
   };
 
   const getStatusVariant = (status: string) => {
@@ -172,6 +207,17 @@ export function ManagerEnrollmentsPage() {
       </div>
 
       <Card className="p-4">
+        {enrollmentsError && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertTitle>Unable to load enrollments</AlertTitle>
+            <AlertDescription>
+              {enrollmentsError instanceof Error ? enrollmentsError.message : 'Please try again.'}
+              <Button variant="outline" size="sm" className="ml-3" onClick={() => refetchEnrollments()}>
+                Retry
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
         <div className="mb-4">
           <Input
             placeholder="Search enrollments..."
@@ -209,7 +255,7 @@ export function ManagerEnrollmentsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((enrollment: any) => (
+                  {data?.content?.map((enrollment) => (
                     <TableRow key={enrollment.id}>
                       <TableCell className="font-medium">{enrollment.studentName}</TableCell>
                       <TableCell>{enrollment.className}</TableCell>
@@ -277,26 +323,81 @@ export function ManagerEnrollmentsPage() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
+          {(studentsQuery.error || yearsQuery.error || classesQuery.error || streamsQuery.error) && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to load assignment options</AlertTitle>
+              <AlertDescription>
+                One or more option lists could not be loaded.
+                <Button type="button" variant="outline" size="sm" className="ml-3" onClick={retryOptions}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Student ID *</label>
-                <Input type="number" {...register('studentId', { valueAsNumber: true })} />
+                <SearchableSelect
+                  label="Student *"
+                  value={watch('studentId') ? String(watch('studentId')) : ''}
+                  options={(studentsQuery.data?.content ?? []).map((student: Student) => ({
+                    value: String(student.id),
+                    label: `${student.firstName} ${student.lastName} (${student.admissionNumber})`,
+                  }))}
+                  placeholder="Choose a student"
+                  loading={studentsQuery.isLoading}
+                  onChange={(event) => setValue('studentId', Number(event.target.value) || 0, { shouldValidate: true })}
+                  emptyMessage="No students found"
+                />
                 {errors.studentId && <p className="text-sm text-destructive">{errors.studentId.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Academic Year ID *</label>
-                <Input type="number" {...register('academicYearId', { valueAsNumber: true })} />
+                <SearchableSelect
+                  label="Academic Year *"
+                  value={watch('academicYearId') ? String(watch('academicYearId')) : ''}
+                  options={(yearsQuery.data?.content ?? []).map((year: AcademicYear) => ({
+                    value: String(year.id),
+                    label: year.name,
+                  }))}
+                  placeholder="Choose an academic year"
+                  loading={yearsQuery.isLoading}
+                  onChange={(event) => setValue('academicYearId', Number(event.target.value) || 0, { shouldValidate: true })}
+                  emptyMessage="No academic years found"
+                />
                 {errors.academicYearId && <p className="text-sm text-destructive">{errors.academicYearId.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Class ID *</label>
-                <Input type="number" {...register('classId', { valueAsNumber: true })} />
+                <SearchableSelect
+                  label="Class *"
+                  value={selectedClassId ? String(selectedClassId) : ''}
+                  options={(classesQuery.data?.content ?? []).map((clazz: Class) => ({
+                    value: String(clazz.id),
+                    label: clazz.code ? `${clazz.name} (${clazz.code})` : clazz.name,
+                  }))}
+                  placeholder="Choose a class"
+                  loading={classesQuery.isLoading}
+                  onChange={(event) => {
+                    setValue('classId', Number(event.target.value) || 0, { shouldValidate: true });
+                    setValue('streamId', undefined, { shouldValidate: true });
+                  }}
+                  emptyMessage="No classes found"
+                />
                 {errors.classId && <p className="text-sm text-destructive">{errors.classId.message}</p>}
               </div>
               <div className="space-y-2">
-                <label className="text-sm font-medium">Stream ID</label>
-                <Input type="number" {...register('streamId', { valueAsNumber: true })} />
+                <SearchableSelect
+                  label="Stream"
+                  value={watch('streamId') ? String(watch('streamId')) : ''}
+                  options={(streamsQuery.data ?? []).map((stream: Stream) => ({
+                    value: String(stream.id),
+                    label: stream.code ? `${stream.name} (${stream.code})` : stream.name,
+                  }))}
+                  placeholder={selectedClassId ? 'Choose a stream (optional)' : 'Choose a class first'}
+                  loading={streamsQuery.isLoading}
+                  disabled={!selectedClassId}
+                  onChange={(event) => setValue('streamId', Number(event.target.value) || undefined, { shouldValidate: true })}
+                  emptyMessage={selectedClassId ? 'No streams are configured for this class' : 'Select a class first'}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Status</label>
@@ -317,7 +418,11 @@ export function ManagerEnrollmentsPage() {
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button
+                type="submit"
+                disabled={createMutation.isPending || updateMutation.isPending
+                  || !(watch('studentId') > 0) || !(watch('academicYearId') > 0) || !(watch('classId') > 0)}
+              >
                 {(createMutation.isPending || updateMutation.isPending) && (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 )}
@@ -330,4 +435,3 @@ export function ManagerEnrollmentsPage() {
     </div>
   );
 }
-

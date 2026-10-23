@@ -1,7 +1,18 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExaminations, createExamination, updateExamination, updateExaminationStatus, getExaminationSubjects, createExaminationSubject } from '@/services/assessments';
+import {
+  getExaminations,
+  createExamination,
+  updateExamination,
+  updateExaminationStatus,
+  getExaminationSubjects,
+  createExaminationSubject,
+  getExaminationTypes,
+} from '@/services/assessments';
+import { getAcademicYears } from '@/services/academic';
 import type { ExaminationResponse, CreateExaminationRequest } from '@/types/academic';
+import type { AcademicYear } from '@/services/academic';
+import type { ExaminationType } from '@/services/assessments';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -9,12 +20,15 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { Plus, Eye, Edit } from 'lucide-react';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
+import { Plus, Eye, Edit, Loader2 } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { PaginatedResponse } from '@/types/api';
 import { Select } from '@/components/ui/Select';
+import { getApiErrorMessage } from '@/services/api';
 
 const examinationSchema = z.object({
   academicYearId: z.number().min(1, 'Academic year is required'),
@@ -53,6 +67,7 @@ export function ManagerExaminationsPage() {
   const [subjectDialogOpen, setSubjectDialogOpen] = useState(false);
   const [editExam, setEditExam] = useState<ExaminationResponse | null>(null);
   const [selectedExamination, setSelectedExamination] = useState<ExaminationResponse | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
@@ -66,12 +81,28 @@ export function ManagerExaminationsPage() {
     enabled: !!selectedExamination,
   });
 
+  // Option lists for the create/edit form. These are scoped to the
+  // authenticated manager's school by the backend (tenant-scoped queries).
+  const yearsQuery = useQuery({
+    queryKey: ['examination-academic-years'],
+    queryFn: () => getAcademicYears(0, 500),
+    enabled: open,
+  });
+  const typesQuery = useQuery({
+    queryKey: ['examination-types'],
+    queryFn: () => getExaminationTypes(0, 500),
+    enabled: open,
+  });
+
   const createMutation = useMutation({
     mutationFn: (req: CreateExaminationRequest) => createExamination(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examinations'] });
       setOpen(false);
+      setEditExam(null);
+      setFormError(null);
     },
+    onError: (err: unknown) => setFormError(getApiErrorMessage(err, 'Failed to create examination')),
   });
 
   const updateMutation = useMutation({
@@ -81,7 +112,9 @@ export function ManagerExaminationsPage() {
       queryClient.invalidateQueries({ queryKey: ['examinations'] });
       setOpen(false);
       setEditExam(null);
+      setFormError(null);
     },
+    onError: (err: unknown) => setFormError(getApiErrorMessage(err, 'Failed to update examination')),
   });
 
   const statusMutation = useMutation({
@@ -90,6 +123,7 @@ export function ManagerExaminationsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examinations'] });
     },
+    onError: (err: unknown) => setFormError(getApiErrorMessage(err, 'Failed to update examination status')),
   });
 
   const createSubjectMutation = useMutation({
@@ -99,15 +133,27 @@ export function ManagerExaminationsPage() {
       queryClient.invalidateQueries({ queryKey: ['examination-subjects'] });
       setSubjectDialogOpen(false);
     },
+    onError: (err: unknown) => setFormError(getApiErrorMessage(err, 'Failed to create examination subject')),
   });
 
   const {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<ExaminationFormValues>({
     resolver: zodResolver(examinationSchema),
+    defaultValues: {
+      academicYearId: 0,
+      name: '',
+      typeId: 0,
+      startDate: '',
+      endDate: '',
+      status: 'DRAFT',
+      description: '',
+    },
   });
 
   const {
@@ -119,16 +165,19 @@ export function ManagerExaminationsPage() {
   });
 
   const handleCreate = (values: ExaminationFormValues) => {
+    setFormError(null);
     createMutation.mutate(values);
   };
 
   const handleUpdate = (values: ExaminationFormValues) => {
+    setFormError(null);
     if (editExam) {
       updateMutation.mutate({ id: editExam.id, data: values });
     }
   };
 
   const handleStatusChange = (exam: ExaminationResponse, status: string) => {
+    setFormError(null);
     statusMutation.mutate({ id: exam.id, status });
   };
 
@@ -138,8 +187,43 @@ export function ManagerExaminationsPage() {
     }
   };
 
+  const handleOpenChange = (newOpen: boolean) => {
+    setOpen(newOpen);
+    if (!newOpen) {
+      setEditExam(null);
+      setFormError(null);
+      reset({
+        academicYearId: 0,
+        name: '',
+        typeId: 0,
+        startDate: '',
+        endDate: '',
+        status: 'DRAFT',
+        description: '',
+      });
+    }
+  };
+
+  const selectedYearId = watch('academicYearId');
+  const selectedTypeId = watch('typeId');
+
+  const yearOptions = (yearsQuery.data?.content ?? []).map((year: AcademicYear) => ({
+    value: String(year.id),
+    label: year.name,
+  }));
+  const typeOptions = (typesQuery.data?.content ?? []).map((type: ExaminationType) => ({
+    value: String(type.id),
+    label: type.name,
+  }));
+
+  const optionsError = yearsQuery.error || typesQuery.error;
+  const retryOptions = () => {
+    void Promise.all([yearsQuery.refetch(), typesQuery.refetch()]);
+  };
+
   const openCreateDialog = () => {
     setEditExam(null);
+    setFormError(null);
     reset({
       academicYearId: 0,
       name: '',
@@ -154,6 +238,7 @@ export function ManagerExaminationsPage() {
 
   const openEditDialog = (exam: ExaminationResponse) => {
     setEditExam(exam);
+    setFormError(null);
     reset({
       academicYearId: exam.academicYearId,
       name: exam.name,
@@ -276,49 +361,116 @@ export function ManagerExaminationsPage() {
               </div>
             </div>
           </>
-        )}
+)}
       </Card>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent title={editExam ? 'Edit Examination' : 'Add Examination'} description={editExam ? 'Update examination details' : 'Create a new examination'}>
-          <form onSubmit={editExam ? handleSubmit(handleUpdate) : handleSubmit(handleCreate)} className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Academic Year ID *</label>
-              <Input type="number" {...register('academicYearId', { valueAsNumber: true })} />
-              {errors.academicYearId && <p className="text-sm text-destructive">{errors.academicYearId.message}</p>}
+          {formError && (
+            <Alert variant="destructive">
+              <AlertTitle>Request failed</AlertTitle>
+              <AlertDescription>{formError}</AlertDescription>
+            </Alert>
+          )}
+          {optionsError && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to load options</AlertTitle>
+              <AlertDescription>
+                Could not load academic years or examination types.
+                <Button type="button" variant="outline" size="sm" className="ml-3" onClick={retryOptions}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
+          <form
+            onSubmit={editExam ? handleSubmit(handleUpdate) : handleSubmit(handleCreate)}
+            className="space-y-4"
+          >
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <SearchableSelect
+                  label="Academic Year *"
+                  value={selectedYearId ? String(selectedYearId) : ''}
+                  options={yearOptions}
+                  placeholder="Choose an academic year"
+                  loading={yearsQuery.isLoading}
+                  onChange={(event) => setValue('academicYearId', Number(event.target.value) || 0, { shouldValidate: true })}
+                  emptyMessage={
+                    !yearsQuery.isLoading && yearOptions.length === 0
+                      ? 'No academic years found. Create an academic year first.'
+                      : 'No academic years found'
+                  }
+                  disabled={yearsQuery.isLoading || !!optionsError}
+                />
+                {errors.academicYearId && (
+                  <p className="text-sm text-destructive">{errors.academicYearId.message}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <SearchableSelect
+                  label="Type *"
+                  value={selectedTypeId ? String(selectedTypeId) : ''}
+                  options={typeOptions}
+                  placeholder="Choose an examination type"
+                  loading={typesQuery.isLoading}
+                  onChange={(event) => setValue('typeId', Number(event.target.value) || 0, { shouldValidate: true })}
+                  emptyMessage={
+                    !typesQuery.isLoading && typeOptions.length === 0
+                      ? 'No examination types found. Create an examination type first.'
+                      : 'No examination types found'
+                  }
+                  disabled={typesQuery.isLoading || !!optionsError}
+                />
+                {errors.typeId && (
+                  <p className="text-sm text-destructive">{errors.typeId.message}</p>
+                )}
+              </div>
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Name *</label>
               <Input {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Type ID *</label>
-              <Input type="number" {...register('typeId', { valueAsNumber: true })} />
-              {errors.typeId && <p className="text-sm text-destructive">{errors.typeId.message}</p>}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Start Date</label>
+                <Input type="date" {...register('startDate')} />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">End Date</label>
+                <Input type="date" {...register('endDate')} />
+              </div>
             </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date</label>
-              <Input type="date" {...register('startDate')} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">End Date</label>
-              <Input type="date" {...register('endDate')} />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
-              <Select
-                {...register('status')}
-                options={statusOptions}
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
-              <Input {...register('description')} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Status</label>
+                <Select
+                  {...register('status')}
+                  options={statusOptions}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Description</label>
+                <Input {...register('description')} />
+              </div>
             </div>
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" onClick={() => { setOpen(false); setEditExam(null); }}>Cancel</Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
+              <Button
+                type="submit"
+                disabled={
+                  createMutation.isPending ||
+                  updateMutation.isPending ||
+                  yearsQuery.isLoading ||
+                  typesQuery.isLoading ||
+                  !selectedYearId ||
+                  !selectedTypeId
+                }
+              >
+                {(createMutation.isPending || updateMutation.isPending) && (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                )}
                 {createMutation.isPending || updateMutation.isPending ? 'Saving...' : editExam ? 'Update' : 'Create'}
               </Button>
             </div>

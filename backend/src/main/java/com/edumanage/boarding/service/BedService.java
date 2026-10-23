@@ -39,17 +39,16 @@ public class BedService {
         Page<Bed> page;
         if (tenantId != null) {
             page = bedRepository.findBySchoolId(tenantId, pageable);
-        } else {
+        } else if (TenantContext.isSuperAdmin()) {
             page = bedRepository.findAll(pageable);
+        } else {
+            throw new ForbiddenException("A school assignment is required");
         }
         return PageResponse.from(page.map(this::mapToDto));
     }
 
     public List<BedDto> listBedsByRoom(Long roomId) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
         var room = roomRepository.findBySchoolIdAndId(tenantId, roomId)
                 .filter(r -> !r.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Room not found"));
@@ -66,10 +65,7 @@ public class BedService {
 
     @Transactional
     public BedDto createBed(CreateBedRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
 
         var room = roomRepository.findBySchoolIdAndId(tenantId, request.getRoomId())
                 .filter(r -> !r.isDeleted())

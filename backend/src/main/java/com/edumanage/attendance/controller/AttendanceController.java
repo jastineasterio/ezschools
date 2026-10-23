@@ -25,12 +25,17 @@ public class AttendanceController {
     private final AttendanceService attendanceService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<AttendanceDto>>> list(Pageable pageable) {
-        var attendance = attendanceService.list(pageable);
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
+    public ResponseEntity<ApiResponse<PageResponse<AttendanceDto>>> list(
+            Pageable pageable,
+            @RequestParam(required = false) Long classId,
+            @RequestParam(required = false) LocalDate date) {
+        var attendance = attendanceService.list(pageable, classId, date);
         return ResponseEntity.ok(new ApiResponse<>(true, "Attendance fetched", attendance, null, LocalDateTime.now(), "/api/school/attendance"));
     }
 
     @GetMapping("/class/{classId}/date/{date}")
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
     public ResponseEntity<ApiResponse<List<AttendanceDto>>> listByClassAndDate(@PathVariable Long classId,
                                                                               @PathVariable LocalDate date) {
         var attendance = attendanceService.listByClassAndDate(classId, date);
@@ -44,18 +49,21 @@ public class AttendanceController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<AttendanceDto>> create(@Valid @RequestBody CreateAttendanceRequest request) {
         var attendance = attendanceService.create(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Attendance created", attendance, null, LocalDateTime.now(), "/api/school/attendance"));
     }
 
     @PostMapping("/bulk")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<List<AttendanceDto>>> bulkCreate(@Valid @RequestBody List<CreateAttendanceRequest> requests) {
         var attendance = attendanceService.bulkCreate(requests);
         return ResponseEntity.ok(new ApiResponse<>(true, "Attendance bulk created", attendance, null, LocalDateTime.now(), "/api/school/attendance/bulk"));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<AttendanceDto>> update(@PathVariable Long id,
                                                              @Valid @RequestBody CreateAttendanceRequest request) {
         var attendance = attendanceService.update(id, request);

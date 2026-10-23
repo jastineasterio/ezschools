@@ -15,7 +15,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/school/fee-assignments")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_ACCOUNTANT', 'ROLE_MANAGER', 'ROLE_SUPER_ADMIN')")
 @RequiredArgsConstructor
 public class FeeAssignmentController {
 

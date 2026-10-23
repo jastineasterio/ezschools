@@ -4,6 +4,9 @@ import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.util.AuditAware;
 import com.edumanage.common.util.TenantAuditor;
 import com.edumanage.exception.BadRequestException;
+import com.edumanage.exception.ForbiddenException;
+import com.edumanage.auth.dto.ChangePasswordRequest;
+
 import com.edumanage.exception.ResourceNotFoundException;
 import com.edumanage.exception.UnauthorizedException;
 import com.edumanage.roles.entity.Role;
@@ -128,6 +131,26 @@ public class AuthService {
             auditLogService.log("LOGOUT", "Auth", refreshToken.getUser().getId(), "User logged out",
                     httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null);
         }
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request) {
+        var auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            throw new UnauthorizedException("Not authenticated");
+        }
+        var user = userRepository.findWithRolesByEmail(auth.getName())
+                .filter(u -> !u.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            throw new ForbiddenException("Current password is incorrect");
+        }
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new BadRequestException("Passwords do not match");
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
     }
 
     public UserDto getCurrentUser() {

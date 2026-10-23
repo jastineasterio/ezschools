@@ -23,30 +23,35 @@ public class StudentEnrollmentController {
     private final StudentEnrollmentService studentEnrollmentService;
 
     @GetMapping
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<PageResponse<StudentEnrollmentDto>>> list(Pageable pageable) {
         var enrollments = studentEnrollmentService.list(pageable);
         return ResponseEntity.ok(new ApiResponse<>(true, "Enrollments fetched", enrollments, null, LocalDateTime.now(), "/api/school/enrollments"));
     }
 
     @GetMapping("/student/{studentId}")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<ApiResponse<java.util.List<StudentEnrollmentDto>>> listByStudent(@PathVariable Long studentId) {
         var enrollments = studentEnrollmentService.listByStudent(studentId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Enrollments fetched by student", enrollments, null, LocalDateTime.now(), "/api/school/enrollments/student/" + studentId));
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<StudentEnrollmentDto>> getById(@PathVariable Long id) {
         var enrollment = studentEnrollmentService.getById(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Enrollment fetched", enrollment, null, LocalDateTime.now(), "/api/school/enrollments/" + id));
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<StudentEnrollmentDto>> create(@Valid @RequestBody CreateStudentEnrollmentRequest request) {
         var enrollment = studentEnrollmentService.create(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Enrollment created", enrollment, null, LocalDateTime.now(), "/api/school/enrollments"));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<StudentEnrollmentDto>> update(@PathVariable Long id,
                                                                     @Valid @RequestBody CreateStudentEnrollmentRequest request) {
         var enrollment = studentEnrollmentService.update(id, request);

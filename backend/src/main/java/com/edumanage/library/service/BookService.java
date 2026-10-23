@@ -11,6 +11,7 @@ import com.edumanage.library.repository.BookCategoryRepository;
 import com.edumanage.library.repository.BookCopyRepository;
 import com.edumanage.library.repository.BookRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
@@ -29,18 +30,21 @@ public class BookService {
     private final BookCategoryRepository bookCategoryRepository;
     private final BookCopyRepository bookCopyRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public BookService(BookRepository bookRepository, BookCategoryRepository bookCategoryRepository,
-                       BookCopyRepository bookCopyRepository, AuditLogService auditLogService) {
+                       BookCopyRepository bookCopyRepository, AuditLogService auditLogService, AccessGuard accessGuard) {
         this.bookRepository = bookRepository;
         this.bookCategoryRepository = bookCategoryRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<BookDto> list(Pageable pageable) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Page<Book> page = bookRepository.findBySchoolId(tenantId, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -48,6 +52,7 @@ public class BookService {
     public BookDto get(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Book book = bookRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
         return mapToDto(book);
@@ -57,6 +62,7 @@ public class BookService {
     public BookDto create(CreateBookRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         if (request.getIsbn() != null && bookRepository.existsBySchoolIdAndIsbn(tenantId, request.getIsbn())) {
             throw new com.edumanage.exception.ConflictException("ISBN already exists");
@@ -93,6 +99,7 @@ public class BookService {
     public BookDto update(Long id, CreateBookRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Book book = bookRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
@@ -137,6 +144,7 @@ public class BookService {
     public void delete(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Book book = bookRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));

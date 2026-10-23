@@ -1,4 +1,5 @@
-import { api } from './api';
+import { api, unwrapApiResponse } from './api';
+import type { ApiResponse, PageResponse } from '@/types/api';
 import type {
   DormitoryResponse,
   CreateDormitoryRequest,
@@ -13,9 +14,12 @@ import type {
 } from '@/types/boarding';
 
 export async function getDormitories(page = 0, size = 20): Promise<{ data: DormitoryResponse[]; total: number }> {
-  const { data } = await api.get(`/school/boarding/dormitories?page=${page}&size=${size}`);
-  const items = data.data as DormitoryResponse[];
-  return { data: items, total: items.length };
+  const result = await unwrapApiResponse(
+    api.get<ApiResponse<PageResponse<DormitoryResponse>>>('/school/boarding/dormitories', {
+      params: { page, size },
+    })
+  );
+  return { data: result.content, total: result.totalElements };
 }
 
 export async function getActiveDormitories(): Promise<DormitoryResponse[]> {

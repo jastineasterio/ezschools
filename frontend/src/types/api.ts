@@ -70,6 +70,7 @@ export interface SchoolResponse {
   address: string | null;
   region: string | null;
   district: string | null;
+  timeZone?: string;
   isActive: boolean;
   isSuspended: boolean;
   suspendedAt: string | null;
@@ -77,6 +78,9 @@ export interface SchoolResponse {
   createdAt: string;
   updatedAt: string;
   userCount?: number;
+  packageName?: string | null;
+  subscriptionStatus?: string | null;
+  subscriptionEndDate?: string | null;
   package?: PackageSummaryResponse;
   subscription?: SubscriptionSummaryResponse;
 }
@@ -164,7 +168,9 @@ export interface SubscriptionResponse {
   id: number;
   uuid: string;
   schoolId: number;
+  schoolName: string | null;
   packageId: number;
+  packageName: string | null;
   status: string;
   startDate: string;
   endDate: string | null;
@@ -178,6 +184,11 @@ export interface SubscriptionResponse {
   updatedAt: string;
   school?: SchoolResponse;
   package?: PackageSummaryResponse;
+}
+
+export interface AssignPackageRequest {
+  packageId: number;
+  startDate?: string;
 }
 
 export interface SubscriptionSummaryResponse {
@@ -289,7 +300,7 @@ export interface SchoolUserResponse {
   schoolId: number;
   isActive: boolean;
   createdAt: string;
-  updatedAt: string;
+  lastLogin: string | null;
 }
 
 export interface CreateSchoolUserRequest {
@@ -297,8 +308,20 @@ export interface CreateSchoolUserRequest {
   firstName: string;
   lastName: string;
   phone?: string;
-  roles: string[];
+  role: string;
   password: string;
+  admissionNumber?: string;
+  gender?: string;
+  dateOfBirth?: string;
+  registrationDate?: string;
+  studentType?: string;
+  address?: string;
+  emergencyContactName?: string;
+  emergencyContactPhone?: string;
+  employmentStatus?: string;
+  qualification?: string;
+  experienceYears?: number;
+  occupation?: string;
 }
 
 export interface UserResponse {

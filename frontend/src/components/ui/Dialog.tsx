@@ -1,4 +1,4 @@
-import { createContext, useContext } from 'react';
+import { createContext, useContext, type HTMLAttributes, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 interface DialogContextValue {
@@ -17,7 +17,7 @@ export function useDialog() {
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
 export function Dialog({ open, onOpenChange, children }: DialogProps) {
@@ -26,7 +26,7 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
     <DialogContext.Provider value={{ open, onOpenChange }}>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div className="fixed inset-0 bg-black/50" onClick={() => onOpenChange(false)} />
-        <div className="relative z-50 w-full max-w-2xl rounded-lg bg-white shadow-lg flex flex-col max-h-[90vh]">
+        <div className="relative z-50 flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-lg border border-border bg-card text-card-foreground shadow-lg">
           {children}
         </div>
       </div>
@@ -34,21 +34,21 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   );
 }
 
-interface DialogContentProps extends React.HTMLAttributes<HTMLDivElement> {
+interface DialogContentProps extends HTMLAttributes<HTMLDivElement> {
   title?: string;
   description?: string;
 }
 
 export function DialogContent({ className, title, description, children, ...props }: DialogContentProps) {
   return (
-    <div className={cn('flex flex-col p-6 space-y-4', className)} {...props}>
+    <div className={cn('flex min-h-0 flex-col space-y-4 p-6', className)} {...props}>
       {(title || description) && (
-        <div className="flex-0">
-          {title && <h2 className="text-lg font-semibold">{title}</h2>}
+        <div className="shrink-0">
+          {title && <h2 className="text-lg font-semibold text-card-foreground">{title}</h2>}
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
       )}
-      <div className="flex-1 overflow-y-auto pr-1">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-1">{children}</div>
     </div>
   );
 }
@@ -57,7 +57,7 @@ export function DialogClose({ onClick }: { onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100"
+      className="absolute right-4 top-4 rounded-sm text-muted-foreground opacity-70 hover:bg-accent hover:text-accent-foreground hover:opacity-100"
     >
       ✕
     </button>

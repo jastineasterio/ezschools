@@ -9,6 +9,7 @@ import com.edumanage.library.entity.BookCopy;
 import com.edumanage.library.repository.BookCopyRepository;
 import com.edumanage.library.repository.BookRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
@@ -25,17 +26,20 @@ public class BookCopyService {
     private final BookCopyRepository bookCopyRepository;
     private final BookRepository bookRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public BookCopyService(BookCopyRepository bookCopyRepository, BookRepository bookRepository,
-                           AuditLogService auditLogService) {
+                           AuditLogService auditLogService, AccessGuard accessGuard) {
         this.bookCopyRepository = bookCopyRepository;
         this.bookRepository = bookRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<BookCopyDto> list(Pageable pageable) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Page<BookCopy> page = bookCopyRepository.findBySchoolId(tenantId, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -43,6 +47,7 @@ public class BookCopyService {
     public List<BookCopyDto> listByBook(Long bookId) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Book book = bookRepository.findBySchoolIdAndId(tenantId, bookId)
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
         return bookCopyRepository.findBySchoolIdAndBookId(tenantId, bookId).stream()
@@ -53,6 +58,7 @@ public class BookCopyService {
     public BookCopyDto get(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         BookCopy copy = bookCopyRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));
         return mapToDto(copy);
@@ -62,6 +68,7 @@ public class BookCopyService {
     public BookCopyDto create(CreateBookCopyRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Book book = bookRepository.findBySchoolIdAndId(tenantId, request.getBookId())
                 .orElseThrow(() -> new ResourceNotFoundException("Book not found"));
@@ -94,6 +101,7 @@ public class BookCopyService {
     public BookCopyDto update(Long id, CreateBookCopyRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         BookCopy copy = bookCopyRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));
@@ -122,6 +130,7 @@ public class BookCopyService {
     public void delete(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         BookCopy copy = bookCopyRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));

@@ -23,6 +23,7 @@ import {
 import type { ClassResponse, CreateClassRequest } from '@/types/academic';
 import type { UpdateClassRequest } from '@/services/academic';
 import { Loader2 } from 'lucide-react';
+import { getApiErrorMessage } from '@/services/api';
 
 const classSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -41,9 +42,9 @@ export function ManagerClassesPage() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: queryError } = useQuery({
     queryKey: ['classes', page, search],
-    queryFn: () => getClasses(page, 10),
+    queryFn: () => getClasses(page, 10, search),
   });
 
   const createMutation = useMutation({
@@ -52,9 +53,10 @@ export function ManagerClassesPage() {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to create class'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to create class')),
   });
 
   const updateMutation = useMutation({
@@ -64,17 +66,19 @@ export function ManagerClassesPage() {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update class'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update class')),
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => updateClassStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['classes'] });
+      setError(null);
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update class status'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update class status')),
   });
 
   const {
@@ -137,6 +141,19 @@ export function ManagerClassesPage() {
         </Button>
       </div>
 
+      {queryError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load classes</AlertTitle>
+          <AlertDescription>{getApiErrorMessage(queryError, 'Please try again.')}</AlertDescription>
+        </Alert>
+      )}
+      {error && !open && (
+        <Alert variant="destructive">
+          <AlertTitle>Request failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="p-4">
         <div className="mb-4">
           <Input
@@ -174,7 +191,7 @@ export function ManagerClassesPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((item: any) => (
+                  {data?.content?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.code || '-'}</TableCell>
@@ -278,4 +295,3 @@ export function ManagerClassesPage() {
     </div>
   );
 }
-

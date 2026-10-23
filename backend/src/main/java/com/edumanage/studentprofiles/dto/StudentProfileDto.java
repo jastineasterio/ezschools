@@ -18,6 +18,8 @@ public class StudentProfileDto {
     private Long userId;
     private Long schoolId;
     private String admissionNumber;
+    // One-time initial password returned only on creation
+    private String initialPassword;
     private String firstName;
     private String middleName;
     private String lastName;

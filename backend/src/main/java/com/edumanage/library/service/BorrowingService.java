@@ -14,6 +14,7 @@ import com.edumanage.library.repository.BookRepository;
 import com.edumanage.library.repository.BorrowingRepository;
 import com.edumanage.library.repository.LibraryMemberRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
@@ -37,24 +38,27 @@ public class BorrowingService {
     private final LibraryMemberRepository libraryMemberRepository;
     private final FineService fineService;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public BorrowingService(BorrowingRepository borrowingRepository,
                             BookCopyRepository bookCopyRepository,
                             BookRepository bookRepository,
                             LibraryMemberRepository libraryMemberRepository,
                             FineService fineService,
-                            AuditLogService auditLogService) {
+                            AuditLogService auditLogService, AccessGuard accessGuard) {
         this.borrowingRepository = borrowingRepository;
         this.bookCopyRepository = bookCopyRepository;
         this.bookRepository = bookRepository;
         this.libraryMemberRepository = libraryMemberRepository;
         this.fineService = fineService;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<BorrowingDto> list(Pageable pageable) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Page<Borrowing> page = borrowingRepository.findBySchoolId(tenantId, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
@@ -62,6 +66,7 @@ public class BorrowingService {
     public List<BorrowingDto> listByMember(Long memberId) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         return borrowingRepository.findBySchoolIdAndMemberId(tenantId, memberId).stream()
                 .map(this::mapToDto)
                 .toList();
@@ -70,6 +75,7 @@ public class BorrowingService {
     public List<BorrowingDto> listOverdue() {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         return borrowingRepository.findBySchoolIdAndDueDateBeforeAndStatus(tenantId, LocalDate.now(), "BORROWED").stream()
                 .map(this::mapToDto)
                 .toList();
@@ -78,6 +84,7 @@ public class BorrowingService {
     public BorrowingDto get(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
         Borrowing borrowing = borrowingRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Borrowing not found"));
         return mapToDto(borrowing);
@@ -87,6 +94,7 @@ public class BorrowingService {
     public BorrowingDto borrow(CreateBorrowingRequest request) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         BookCopy bookCopy = bookCopyRepository.findBySchoolIdAndId(tenantId, request.getBookCopyId())
                 .orElseThrow(() -> new ResourceNotFoundException("Book copy not found"));
@@ -130,6 +138,7 @@ public class BorrowingService {
     public BorrowingDto returnBook(Long id) {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         Borrowing borrowing = borrowingRepository.findBySchoolIdAndId(tenantId, id)
                 .orElseThrow(() -> new ResourceNotFoundException("Borrowing not found"));
@@ -164,6 +173,7 @@ public class BorrowingService {
     public void detectOverdue() {
         Long tenantId = TenantContext.getTenantId();
         LibraryFeatureGuard.checkLibraryFeature(tenantId);
+        accessGuard.assertLibraryAccess();
 
         List<Borrowing> overdueBorrowings = borrowingRepository.findBySchoolIdAndDueDateBeforeAndStatus(tenantId, LocalDate.now(), "BORROWED");
 

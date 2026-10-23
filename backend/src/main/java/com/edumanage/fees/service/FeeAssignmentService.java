@@ -13,6 +13,7 @@ import com.edumanage.studentprofiles.entity.StudentProfile;
 import com.edumanage.studentprofiles.repository.StudentProfileRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -31,18 +32,22 @@ public class FeeAssignmentService {
     private final FeeStructureRepository feeStructureRepository;
     private final StudentProfileRepository studentProfileRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public FeeAssignmentService(FeeAssignmentRepository feeAssignmentRepository,
                                 FeeStructureRepository feeStructureRepository,
                                 StudentProfileRepository studentProfileRepository,
-                                AuditLogService auditLogService) {
+                                AuditLogService auditLogService,
+                                AccessGuard accessGuard) {
         this.feeAssignmentRepository = feeAssignmentRepository;
         this.feeStructureRepository = feeStructureRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<FeeAssignmentDto> list(Pageable pageable) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Page<FeeAssignment> page;
         if (tenantId != null) {
@@ -54,6 +59,7 @@ public class FeeAssignmentService {
     }
 
     public List<FeeAssignmentDto> listByStudent(Long studentId) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         var student = studentProfileRepository.findById(studentId)
                 .filter(s -> !s.isDeleted())
@@ -71,6 +77,7 @@ public class FeeAssignmentService {
 
     @Transactional
     public FeeAssignmentDto assign(CreateFeeAssignmentRequest request) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -121,6 +128,7 @@ public class FeeAssignmentService {
 
     @Transactional
     public void bulkAssign(Long feeStructureId, List<Long> studentIds) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -184,6 +192,18 @@ public class FeeAssignmentService {
         dto.setAssignedAt(entity.getAssignedAt());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        if (entity.getStudentId() != null) {
+            studentProfileRepository.findById(entity.getStudentId())
+                    .filter(student -> !student.isDeleted())
+                    .ifPresent(student -> {
+                        dto.setStudentName(student.getFirstName() + " " + student.getLastName());
+                        dto.setAdmissionNumber(student.getAdmissionNumber());
+                    });
+        }
+        if (entity.getFeeStructureId() != null) {
+            feeStructureRepository.findById(entity.getFeeStructureId())
+                    .ifPresent(structure -> dto.setFeeStructureName(structure.getName()));
+        }
         return dto;
     }
 }

@@ -23,8 +23,9 @@ public class AcademicYearController {
     private final AcademicYearService academicYearService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<AcademicYearDto>>> listBySchool(Pageable pageable) {
-        var academicYears = academicYearService.listBySchool(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<AcademicYearDto>>> listBySchool(
+            Pageable pageable, @RequestParam(required = false) String search) {
+        var academicYears = academicYearService.listBySchool(pageable, search);
         return ResponseEntity.ok(new ApiResponse<>(true, "Academic years fetched", academicYears, null, LocalDateTime.now(), "/api/school/academic-years"));
     }
 

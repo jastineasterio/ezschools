@@ -57,6 +57,8 @@ public class PackageService {
 
     @Transactional
     public PackageDto createPackage(CreatePackageRequest request) {
+        validatePackageRequest(request);
+
         if (packageRepository.existsByName(request.getName())) {
             throw new ConflictException("Package name already exists");
         }
@@ -81,6 +83,8 @@ public class PackageService {
 
     @Transactional
     public PackageDto updatePackage(Long id, CreatePackageRequest request) {
+        validatePackageRequest(request);
+
         var pkg = packageRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Package not found"));
 
@@ -96,6 +100,20 @@ public class PackageService {
 
         auditLogService.log("PACKAGE_UPDATE", "Package", pkg.getId(),
                 "Updated package " + pkg.getName(), null, null, null);
+
+        return mapToDto(pkg);
+    }
+
+    @Transactional
+    public PackageDto updatePackageStatus(Long id, boolean active) {
+        var pkg = packageRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Package not found"));
+
+        pkg.setActive(active);
+        packageRepository.save(pkg);
+
+        auditLogService.log("PACKAGE_STATUS_UPDATE", "Package", pkg.getId(),
+                "Set package " + pkg.getName() + " to " + (active ? "active" : "inactive"), null, null, null);
 
         return mapToDto(pkg);
     }
@@ -173,6 +191,20 @@ public class PackageService {
                 "Added limit " + limitName + " to package " + pkg.getName(), null, null, null);
 
         return mapToDto(pkg);
+    }
+
+    private void validatePackageRequest(CreatePackageRequest request) {
+        if (request.getPrice() == null || request.getPrice().compareTo(BigDecimal.ZERO) < 0) {
+            throw new BadRequestException("Package price cannot be negative");
+        }
+
+        if (request.getBillingPeriod() == null || request.getBillingPeriod().isBlank()) {
+            throw new BadRequestException("Billing period is required");
+        }
+
+        if (request.getName() == null || request.getName().isBlank()) {
+            throw new BadRequestException("Package name is required");
+        }
     }
 
     private PackageDto mapToDto(Package pkg) {

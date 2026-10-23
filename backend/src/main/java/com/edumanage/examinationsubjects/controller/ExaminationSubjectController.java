@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/school/examinations/{examinationId}/subjects")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
 @RequiredArgsConstructor
 public class ExaminationSubjectController {
 

@@ -16,7 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/school/boarding/rooms")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_WARDEN', 'ROLE_MANAGER', 'ROLE_SUPER_ADMIN')")
 @RequiredArgsConstructor
 public class RoomController {
 

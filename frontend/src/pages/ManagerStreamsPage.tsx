@@ -24,6 +24,7 @@ import {
 import type { StreamResponse, CreateStreamRequest } from '@/types/academic';
 import type { UpdateStreamRequest } from '@/services/academic';
 import { Loader2 } from 'lucide-react';
+import { getApiErrorMessage } from '@/services/api';
 
 const streamSchema = z.object({
   classId: z.number().min(1, 'Class is required'),
@@ -44,14 +45,17 @@ export function ManagerStreamsPage() {
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: queryError } = useQuery({
     queryKey: ['streams', page, search, classFilter],
     queryFn: async () => {
       if (classFilter) {
         const data = await getStreamsByClass(Number(classFilter));
-        return { content: data, totalPages: 1, hasNext: false };
+        const filtered = data.filter((stream) =>
+          `${stream.name} ${stream.code || ''}`.toLowerCase().includes(search.trim().toLowerCase())
+        );
+        return { content: filtered, totalPages: 1, hasNext: false };
       }
-      return getStreams(page, 10);
+      return getStreams(page, 10, search);
     },
   });
 
@@ -61,9 +65,10 @@ export function ManagerStreamsPage() {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to create stream'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to create stream')),
   });
 
   const updateMutation = useMutation({
@@ -73,17 +78,19 @@ export function ManagerStreamsPage() {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update stream'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update stream')),
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => updateStreamStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['streams'] });
+      setError(null);
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update stream status'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update stream status')),
   });
 
   const {
@@ -148,6 +155,19 @@ export function ManagerStreamsPage() {
         </Button>
       </div>
 
+      {queryError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load streams</AlertTitle>
+          <AlertDescription>{getApiErrorMessage(queryError, 'Please try again.')}</AlertDescription>
+        </Alert>
+      )}
+      {error && !open && (
+        <Alert variant="destructive">
+          <AlertTitle>Request failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="p-4">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row">
           <Input
@@ -194,7 +214,7 @@ export function ManagerStreamsPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((item: any) => (
+                  {data?.content?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.className}</TableCell>
@@ -306,4 +326,3 @@ export function ManagerStreamsPage() {
     </div>
   );
 }
-

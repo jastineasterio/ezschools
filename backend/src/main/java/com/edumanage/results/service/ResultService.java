@@ -13,6 +13,10 @@ import com.edumanage.examinations.repository.ExaminationRepository;
 import com.edumanage.users.entity.User;
 import com.edumanage.users.repository.UserRepository;
 import com.edumanage.audit.service.AuditLogService;
+import com.edumanage.security.AccessGuard;
+import com.edumanage.security.CurrentUserService;
+import com.edumanage.teacherassignments.repository.TeacherAssignmentRepository;
+import com.edumanage.enrollments.repository.StudentEnrollmentRepository;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
@@ -21,6 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Service
 public class ResultService {
@@ -31,19 +36,31 @@ public class ResultService {
     private final ExaminationRepository examinationRepository;
     private final UserRepository userRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
+    private final CurrentUserService currentUserService;
+    private final TeacherAssignmentRepository teacherAssignmentRepository;
+    private final StudentEnrollmentRepository enrollmentRepository;
 
     public ResultService(ResultRepository resultRepository,
                          StudentProfileRepository studentProfileRepository,
                          ExaminationSubjectRepository examinationSubjectRepository,
                          ExaminationRepository examinationRepository,
                          UserRepository userRepository,
-                         AuditLogService auditLogService) {
+                         AuditLogService auditLogService,
+                         AccessGuard accessGuard,
+                         CurrentUserService currentUserService,
+                         TeacherAssignmentRepository teacherAssignmentRepository,
+                         StudentEnrollmentRepository enrollmentRepository) {
         this.resultRepository = resultRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.examinationSubjectRepository = examinationSubjectRepository;
         this.examinationRepository = examinationRepository;
         this.userRepository = userRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
+        this.currentUserService = currentUserService;
+        this.teacherAssignmentRepository = teacherAssignmentRepository;
+        this.enrollmentRepository = enrollmentRepository;
     }
 
     public PageResponse<ResultDto> list(Pageable pageable) {
@@ -58,6 +75,7 @@ public class ResultService {
     }
 
     public PageResponse<ResultDto> listByStudent(Long studentId, Pageable pageable) {
+        accessGuard.assertCanAccessStudent(studentId);
         var student = studentProfileRepository.findById(studentId)
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
@@ -67,7 +85,11 @@ public class ResultService {
             throw new ForbiddenException("Access denied");
         }
 
-        Page<Result> page = resultRepository.findByStudentIdAndSchoolId(studentId, tenantId != null ? tenantId : null, pageable);
+        User currentUser = currentUserService.requireCurrentUser();
+        Page<Result> page = currentUserService.hasAnyRole(currentUser, "MANAGER", "HOD", "SUPER_ADMIN")
+                ? resultRepository.findByStudentIdAndSchoolId(studentId, tenantId, pageable)
+                : resultRepository.findByStudentIdAndSchoolIdAndStatusAndDeletedAtIsNull(
+                        studentId, tenantId, "PUBLISHED", pageable);
         return PageResponse.from(page.map(result -> mapToDto(result, student.getFirstName() + " " + student.getLastName(), student.getAdmissionNumber(), null, null, null, null)));
     }
 
@@ -112,24 +134,19 @@ public class ResultService {
         if (examination == null || !tenantId.equals(examination.getSchoolId())) {
             throw new ForbiddenException("Examination subject does not belong to this school");
         }
+        User actor = currentUserService.requireCurrentUser();
+        if (!currentUserService.hasAnyRole(actor, "TEACHER", "MANAGER")) {
+            throw new ForbiddenException("You are not authorised to enter results");
+        }
+        validateTeacherAssignment(actor, student.getId(), examSubject, examination);
+        validateMarks(request.getMarksObtained(), examSubject.getMaximumMarks());
 
         var existingResult = resultRepository.findByStudentIdAndExaminationSubjectId(request.getStudentId(), request.getExaminationSubjectId());
         if (existingResult.isPresent()) {
             throw new com.edumanage.exception.ConflictException("Result already exists for this student and examination subject");
         }
 
-        var currentUser = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
-        Long teacherId = null;
-        if (currentUser != null && currentUser.isAuthenticated()) {
-            var principal = currentUser.getPrincipal();
-            if (principal instanceof com.edumanage.security.CustomUserDetails) {
-                teacherId = ((com.edumanage.security.CustomUserDetails) principal).id();
-            }
-        }
-
-        if (teacherId == null) {
-            throw new ForbiddenException("Teacher not authenticated");
-        }
+        Long teacherId = actor.getId();
 
         var teacher = userRepository.findById(teacherId)
                 .orElseThrow(() -> new ResourceNotFoundException("Teacher not found"));
@@ -141,7 +158,7 @@ public class ResultService {
         result.setExaminationId(examSubject.getExaminationId());
         result.setTeacherId(teacherId);
         result.setMarksObtained(request.getMarksObtained() != null ? new BigDecimal(request.getMarksObtained()) : null);
-        result.setPercentage(request.getMarksObtained() != null ? new BigDecimal(request.getMarksObtained()) : null);
+        result.setPercentage(toPercentage(request.getMarksObtained(), examSubject.getMaximumMarks()));
         result.setRemarks(request.getRemarks());
         result.setStatus("DRAFT");
 
@@ -167,13 +184,36 @@ public class ResultService {
         if (!"DRAFT".equals(result.getStatus())) {
             throw new BadRequestException("Only DRAFT results can be updated");
         }
+        User actor = currentUserService.requireCurrentUser();
+        if (!currentUserService.hasAnyRole(actor, "MANAGER", "TEACHER")) {
+            throw new ForbiddenException("You are not authorised to update results");
+        }
+        if (currentUserService.hasRole(actor, "TEACHER")
+                && !currentUserService.hasRole(actor, "MANAGER")) {
+            if (!actor.getId().equals(result.getTeacherId())
+                    || !result.getStudentId().equals(request.getStudentId())) {
+                throw new ForbiddenException("Teachers may only update their own draft results");
+            }
+            var examSubject = examinationSubjectRepository.findById(result.getExaminationSubjectId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Examination subject not found"));
+            var examination = examinationRepository.findById(result.getExaminationId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Examination not found"));
+            validateTeacherAssignment(actor, result.getStudentId(), examSubject, examination);
+        }
 
         var student = studentProfileRepository.findById(request.getStudentId())
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        if (!result.getStudentId().equals(student.getId())
+                || !result.getExaminationSubjectId().equals(request.getExaminationSubjectId())) {
+            throw new BadRequestException("A result cannot be reassigned to another student or examination subject");
+        }
+        var examSubject = examinationSubjectRepository.findById(result.getExaminationSubjectId())
+                .orElseThrow(() -> new ResourceNotFoundException("Examination subject not found"));
+        validateMarks(request.getMarksObtained(), examSubject.getMaximumMarks());
 
         result.setMarksObtained(request.getMarksObtained() != null ? new BigDecimal(request.getMarksObtained()) : null);
-        result.setPercentage(request.getMarksObtained() != null ? new BigDecimal(request.getMarksObtained()) : null);
+        result.setPercentage(toPercentage(request.getMarksObtained(), examSubject.getMaximumMarks()));
         result.setRemarks(request.getRemarks());
 
         resultRepository.save(result);
@@ -198,6 +238,15 @@ public class ResultService {
         if (!"DRAFT".equals(result.getStatus())) {
             throw new BadRequestException("Only DRAFT results can be submitted");
         }
+        User actor = currentUserService.requireCurrentUser();
+        if (currentUserService.hasRole(actor, "TEACHER")
+                && !currentUserService.hasRole(actor, "MANAGER")
+                && !actor.getId().equals(result.getTeacherId())) {
+            throw new ForbiddenException("Teachers may only submit their own draft results");
+        }
+        if (!currentUserService.hasAnyRole(actor, "TEACHER", "MANAGER")) {
+            throw new ForbiddenException("You are not authorised to submit results");
+        }
 
         result.setStatus("SUBMITTED");
         result.setSubmittedAt(java.time.LocalDateTime.now());
@@ -207,6 +256,52 @@ public class ResultService {
                 "Submitted result", null, null, null);
 
         return mapToDto(result, null, null, null, null, null, null);
+    }
+
+    private void validateTeacherAssignment(User actor, Long studentId,
+                                           com.edumanage.examinationsubjects.entity.ExaminationSubject examSubject,
+                                           com.edumanage.examinations.entity.Examination examination) {
+        if (!currentUserService.hasRole(actor, "TEACHER")
+                || currentUserService.hasRole(actor, "MANAGER")) {
+            return;
+        }
+        Long schoolId = TenantContext.requireTenantId();
+        boolean assigned = teacherAssignmentRepository
+                .existsByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdAndAcademicYearIdAndDeletedAtIsNull(
+                        actor.getId(), schoolId, examSubject.getSubjectId(), examSubject.getClassId(),
+                        examSubject.getStreamId(), examination.getAcademicYearId());
+        if (!assigned && examSubject.getStreamId() != null) {
+            assigned = teacherAssignmentRepository
+                    .existsByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdIsNullAndAcademicYearIdAndDeletedAtIsNull(
+                            actor.getId(), schoolId, examSubject.getSubjectId(), examSubject.getClassId(),
+                            examination.getAcademicYearId());
+        }
+        if (!assigned) {
+            throw new ForbiddenException("You are not assigned to this examination subject");
+        }
+        enrollmentRepository.findByStudentIdAndAcademicYearId(studentId,
+                        examination.getAcademicYearId())
+                .filter(value -> !value.isDeleted() && "ENROLLED".equals(value.getStatus())
+                        && schoolId.equals(value.getSchoolId())
+                        && examSubject.getClassId().equals(value.getClassId())
+                        && (examSubject.getStreamId() == null
+                        || examSubject.getStreamId().equals(value.getStreamId())))
+                .orElseThrow(() -> new ForbiddenException("Student is outside the assigned examination class"));
+    }
+
+    private void validateMarks(Integer marks, BigDecimal maximumMarks) {
+        if (maximumMarks == null || maximumMarks.signum() <= 0) {
+            throw new BadRequestException("Examination maximum marks must be greater than zero");
+        }
+        if (marks != null && (marks < 0 || BigDecimal.valueOf(marks).compareTo(maximumMarks) > 0)) {
+            throw new BadRequestException("Marks must be between 0 and the examination maximum");
+        }
+    }
+
+    private BigDecimal toPercentage(Integer marks, BigDecimal maximumMarks) {
+        return marks == null ? null : BigDecimal.valueOf(marks)
+                .multiply(BigDecimal.valueOf(100))
+                .divide(maximumMarks, 2, RoundingMode.HALF_UP);
     }
 
     @Transactional

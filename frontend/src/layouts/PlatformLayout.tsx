@@ -19,7 +19,6 @@ import {
   Moon,
 } from 'lucide-react';
 import { useState } from 'react';
-import { logout } from '@/services/api';
 import { useTheme } from '@/store/ThemeContext';
 
 const navItems = [
@@ -36,7 +35,7 @@ const navItems = [
 ];
 
 export function PlatformLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { branding } = useBranding();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -46,7 +45,7 @@ export function PlatformLayout() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const primaryColor = branding?.primaryColor || '#3b82f6';

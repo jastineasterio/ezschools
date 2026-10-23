@@ -17,4 +17,5 @@ public interface BedRepository extends JpaRepository<Bed, Long> {
     List<Bed> findBySchoolIdAndStudentId(Long schoolId, Long studentId);
     boolean existsBySchoolIdAndRoomIdAndBedNumber(Long schoolId, Long roomId, String bedNumber);
     boolean existsBySchoolIdAndStudentIdAndStatus(Long schoolId, Long studentId, String status);
+    long countBySchoolIdAndStatus(Long schoolId, String status);
 }

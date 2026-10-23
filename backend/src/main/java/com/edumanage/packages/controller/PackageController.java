@@ -51,8 +51,7 @@ public class PackageController {
     @PatchMapping("/{id}/status")
     public ResponseEntity<ApiResponse<PackageDto>> updatePackageStatus(@PathVariable Long id,
                                                                        @RequestParam boolean active) {
-        var pkg = packageService.getPackage(id);
-        pkg.setActive(active);
+        var pkg = packageService.updatePackageStatus(id, active);
         return ResponseEntity.ok(new ApiResponse<>(true, "Package status updated", pkg, null, LocalDateTime.now(), "/api/platform/packages/" + id + "/status"));
     }
 }

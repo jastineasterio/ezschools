@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import { useAuth } from '@/store/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
+import { getDashboardPath } from '@/lib/roles';
 
 const loginSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -17,7 +18,7 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
-  const { login, isAuthenticated } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -30,17 +31,16 @@ export function LoginForm() {
     resolver: zodResolver(loginSchema),
   });
 
-  if (isAuthenticated) {
-    navigate('/platform/dashboard', { replace: true });
-    return null;
+  if (user) {
+    return <Navigate to={getDashboardPath(user.roles)} replace />;
   }
 
   const onSubmit = async (data: LoginFormValues) => {
     setIsSubmitting(true);
     setError(null);
     try {
-      await login(data.email, data.password);
-      navigate('/platform/dashboard', { replace: true });
+      const currentUser = await login(data.email, data.password);
+      navigate(getDashboardPath(currentUser.roles), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {

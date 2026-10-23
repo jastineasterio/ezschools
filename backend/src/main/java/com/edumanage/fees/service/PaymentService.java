@@ -17,6 +17,7 @@ import com.edumanage.studentprofiles.entity.StudentProfile;
 import com.edumanage.studentprofiles.repository.StudentProfileRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -36,22 +37,26 @@ public class PaymentService {
     private final FinancialCategoryRepository financialCategoryRepository;
     private final FinancialTransactionRepository financialTransactionRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public PaymentService(PaymentRepository paymentRepository,
                           FeeAssignmentRepository feeAssignmentRepository,
                           StudentProfileRepository studentProfileRepository,
                           FinancialCategoryRepository financialCategoryRepository,
                           FinancialTransactionRepository financialTransactionRepository,
-                          AuditLogService auditLogService) {
+                          AuditLogService auditLogService,
+                          AccessGuard accessGuard) {
         this.paymentRepository = paymentRepository;
         this.feeAssignmentRepository = feeAssignmentRepository;
         this.studentProfileRepository = studentProfileRepository;
         this.financialCategoryRepository = financialCategoryRepository;
         this.financialTransactionRepository = financialTransactionRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<PaymentDto> list(Pageable pageable) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Page<Payment> page;
         if (tenantId != null) {
@@ -63,6 +68,7 @@ public class PaymentService {
     }
 
     public List<PaymentDto> listByStudent(Long studentId) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         var student = studentProfileRepository.findById(studentId)
                 .filter(s -> !s.isDeleted())
@@ -80,6 +86,7 @@ public class PaymentService {
 
     @Transactional
     public PaymentDto create(CreatePaymentRequest request) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -177,6 +184,14 @@ public class PaymentService {
         dto.setStatus(entity.getStatus());
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
+        if (entity.getStudentId() != null) {
+            studentProfileRepository.findById(entity.getStudentId())
+                    .filter(student -> !student.isDeleted())
+                    .ifPresent(student -> {
+                        dto.setStudentName(student.getFirstName() + " " + student.getLastName());
+                        dto.setAdmissionNumber(student.getAdmissionNumber());
+                    });
+        }
         return dto;
     }
 }

@@ -3,6 +3,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/store/AuthContext';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -16,6 +18,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
 import { Plus, MoreVertical, Edit, Trash2 } from 'lucide-react';
 import {
   getDepartments,
+  getEligibleDepartmentHeads,
   createDepartment,
   updateDepartment,
   updateDepartmentStatus,
@@ -23,6 +26,7 @@ import {
 import type { DepartmentResponse, CreateDepartmentRequest } from '@/types/academic';
 import type { UpdateDepartmentRequest } from '@/services/academic';
 import { Loader2 } from 'lucide-react';
+import { getApiErrorMessage } from '@/services/api';
 
 const departmentSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -40,12 +44,29 @@ export function ManagerDepartmentsPage() {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState<DepartmentResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [headSearch, setHeadSearch] = useState('');
   const queryClient = useQueryClient();
+  const { user } = useAuth();
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['departments', page, search],
-    queryFn: () => getDepartments(page, 10),
+  const { data, isLoading, error: queryError, refetch } = useQuery({
+    queryKey: ['departments', user?.schoolId, page, search],
+    queryFn: () => getDepartments(page, 10, search),
   });
+  const {
+    data: headsData,
+    isLoading: headsLoading,
+    error: headsError,
+    refetch: refetchHeads,
+  } = useQuery({
+    queryKey: ['department-head-options', user?.schoolId],
+    queryFn: () => getEligibleDepartmentHeads(),
+    enabled: open,
+  });
+  const filteredHeads = (headsData ?? []).filter((user) =>
+    `${user.name} ${user.email}`
+      .toLocaleLowerCase()
+      .includes(headSearch.trim().toLocaleLowerCase())
+  );
 
   const createMutation = useMutation({
     mutationFn: (req: CreateDepartmentRequest) => createDepartment(req),
@@ -53,9 +74,10 @@ export function ManagerDepartmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to create department'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to create department')),
   });
 
   const updateMutation = useMutation({
@@ -65,23 +87,27 @@ export function ManagerDepartmentsPage() {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
       setOpen(false);
       setEditing(null);
+      setError(null);
       reset();
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update department'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update department')),
   });
 
   const statusMutation = useMutation({
     mutationFn: ({ id, status }: { id: number; status: string }) => updateDepartmentStatus(id, status),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['departments'] });
+      setError(null);
     },
-    onError: (err: any) => setError(err?.message || 'Failed to update department status'),
+    onError: (err: unknown) => setError(getApiErrorMessage(err, 'Failed to update department status')),
   });
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
+    setValue,
     formState: { errors },
   } = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
@@ -96,6 +122,7 @@ export function ManagerDepartmentsPage() {
 
   const openCreate = () => {
     setEditing(null);
+    setHeadSearch('');
     reset({ name: '', code: '', description: '', headOfDepartmentId: undefined, status: 'ACTIVE' });
     setOpen(true);
     setError(null);
@@ -103,6 +130,7 @@ export function ManagerDepartmentsPage() {
 
   const openEdit = (item: DepartmentResponse) => {
     setEditing(item);
+    setHeadSearch('');
     reset({
       name: item.name,
       code: item.code || '',
@@ -140,6 +168,24 @@ export function ManagerDepartmentsPage() {
         </Button>
       </div>
 
+      {queryError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load departments</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(queryError, 'Please try again.')}
+            <Button variant="outline" size="sm" className="ml-3" onClick={() => refetch()}>
+              Retry
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {error && !open && (
+        <Alert variant="destructive">
+          <AlertTitle>Request failed</AlertTitle>
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       <Card className="p-4">
         <div className="mb-4">
           <Input
@@ -170,14 +216,14 @@ export function ManagerDepartmentsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.content?.length === 0 && (
+                  {!queryError && data?.content?.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={5} className="text-center text-muted-foreground">
                         No departments found
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((item: any) => (
+                  {data?.content?.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
                       <TableCell>{item.code || '-'}</TableCell>
@@ -259,8 +305,60 @@ export function ManagerDepartmentsPage() {
               <Input {...register('description')} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Head of Department ID</label>
-              <Input type="number" {...register('headOfDepartmentId', { valueAsNumber: true })} />
+              <label className="text-sm font-medium">Head of Department</label>
+              {headsError && (
+                <Alert variant="destructive">
+                  <AlertDescription>
+                    Unable to load eligible heads: {getApiErrorMessage(headsError, 'Please try again.')}
+                    <Button type="button" variant="outline" size="sm" className="ml-3" onClick={() => refetchHeads()}>
+                      Retry
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              )}
+              {!headsError && headsData?.length === 0 && !headsLoading && (
+                <Alert>
+                  <AlertDescription>
+                    No active HOD users are available for this school.{' '}
+                    <Link className="underline" to="/school/users">Add a user with the HOD role.</Link>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <Input
+                aria-label="Search HOD users"
+                placeholder="Search by name or email..."
+                value={headSearch}
+                disabled={headsLoading || Boolean(headsError)}
+                onChange={(event) => setHeadSearch(event.target.value)}
+              />
+              <Select
+                aria-label="Head of department"
+                value={watch('headOfDepartmentId')?.toString() ?? ''}
+                disabled={headsLoading || Boolean(headsError)}
+                onChange={(event) => {
+                  const id = event.target.value;
+                  setValue('headOfDepartmentId', id ? Number(id) : undefined, { shouldValidate: true });
+                }}
+                options={[
+                  {
+                    value: '',
+                    label: headsLoading
+                      ? 'Loading eligible users...'
+                      : filteredHeads.length === 0 && headSearch
+                        ? 'No matching HOD users'
+                        : 'No head assigned',
+                  },
+                  ...filteredHeads.map((user) => ({
+                    value: String(user.id),
+                    label: `${user.name} (${user.email})`,
+                  })),
+                ]}
+              />
+              {headsData && headsData.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Only active users with the HOD role from this school are listed.
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Status</label>
@@ -285,4 +383,3 @@ export function ManagerDepartmentsPage() {
     </div>
   );
 }
-

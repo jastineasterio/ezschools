@@ -9,6 +9,7 @@ import com.edumanage.finance.entity.FinancialCategory;
 import com.edumanage.finance.repository.FinancialCategoryRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -22,13 +23,17 @@ public class FinancialCategoryService {
 
     private final FinancialCategoryRepository financialCategoryRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
-    public FinancialCategoryService(FinancialCategoryRepository financialCategoryRepository, AuditLogService auditLogService) {
+    public FinancialCategoryService(FinancialCategoryRepository financialCategoryRepository, AuditLogService auditLogService,
+                                    AccessGuard accessGuard) {
         this.financialCategoryRepository = financialCategoryRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<FinancialCategoryDto> list(Pageable pageable) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Page<FinancialCategory> page;
         if (tenantId != null) {
@@ -40,6 +45,7 @@ public class FinancialCategoryService {
     }
 
     public List<FinancialCategoryDto> listByType(String categoryType) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Long schoolId = tenantId != null ? tenantId : null;
         if (schoolId == null) {
@@ -54,6 +60,7 @@ public class FinancialCategoryService {
     }
 
     public FinancialCategoryDto getById(Long id) {
+        accessGuard.assertFinancialAccess();
         var category = financialCategoryRepository.findById(id)
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Financial category not found"));
@@ -68,6 +75,7 @@ public class FinancialCategoryService {
 
     @Transactional
     public FinancialCategoryDto create(CreateFinancialCategoryRequest request) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");
@@ -94,6 +102,7 @@ public class FinancialCategoryService {
 
     @Transactional
     public FinancialCategoryDto update(Long id, CreateFinancialCategoryRequest request) {
+        accessGuard.assertFinancialAccess();
         var category = financialCategoryRepository.findById(id)
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Financial category not found"));

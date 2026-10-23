@@ -8,6 +8,7 @@ import com.edumanage.boarding.dto.CreateRoomRequest;
 import com.edumanage.boarding.dto.RoomDto;
 import com.edumanage.boarding.entity.Dormitory;
 import com.edumanage.boarding.entity.Room;
+import com.edumanage.boarding.repository.BedRepository;
 import com.edumanage.boarding.repository.DormitoryRepository;
 import com.edumanage.boarding.repository.RoomRepository;
 import com.edumanage.audit.service.AuditLogService;
@@ -26,11 +27,14 @@ public class RoomService {
 
     private final RoomRepository roomRepository;
     private final DormitoryRepository dormitoryRepository;
+    private final BedRepository bedRepository;
     private final AuditLogService auditLogService;
 
-    public RoomService(RoomRepository roomRepository, DormitoryRepository dormitoryRepository, AuditLogService auditLogService) {
+    public RoomService(RoomRepository roomRepository, DormitoryRepository dormitoryRepository,
+                       BedRepository bedRepository, AuditLogService auditLogService) {
         this.roomRepository = roomRepository;
         this.dormitoryRepository = dormitoryRepository;
+        this.bedRepository = bedRepository;
         this.auditLogService = auditLogService;
     }
 
@@ -39,17 +43,16 @@ public class RoomService {
         Page<Room> page;
         if (tenantId != null) {
             page = roomRepository.findBySchoolId(tenantId, pageable);
-        } else {
+        } else if (TenantContext.isSuperAdmin()) {
             page = roomRepository.findAll(pageable);
+        } else {
+            throw new ForbiddenException("A school assignment is required");
         }
         return PageResponse.from(page.map(this::mapToDto));
     }
 
     public List<RoomDto> listRoomsByDormitory(Long dormitoryId) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
         var dormitory = dormitoryRepository.findBySchoolIdAndId(tenantId, dormitoryId)
                 .filter(d -> !d.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Dormitory not found"));
@@ -66,10 +69,7 @@ public class RoomService {
 
     @Transactional
     public RoomDto createRoom(CreateRoomRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
 
         var dormitory = dormitoryRepository.findBySchoolIdAndId(tenantId, request.getDormitoryId())
                 .filter(d -> !d.isDeleted())
@@ -130,6 +130,11 @@ public class RoomService {
     @Transactional
     public void deleteRoom(Long id) {
         var room = findByIdAndSchool(id);
+        boolean hasBeds = bedRepository.findBySchoolIdAndRoomId(room.getSchoolId(), id).stream()
+                .anyMatch(bed -> !bed.isDeleted());
+        if (room.getCurrentOccupancy() > 0 || hasBeds) {
+            throw new ConflictException("Release occupants and delete the room's beds before deleting it");
+        }
         room.setDeletedAt(java.time.LocalDateTime.now());
         roomRepository.save(room);
 

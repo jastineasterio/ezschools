@@ -21,8 +21,12 @@ public class AuditLogController {
     private final AuditLogService auditLogService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<AuditLogDto>>> getAuditLogs(Pageable pageable) {
-        var logs = auditLogService.getAuditLogs(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<AuditLogDto>>> getAuditLogs(
+            Pageable pageable,
+            @RequestParam(required = false) String search,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String entityType) {
+        var logs = auditLogService.getAuditLogs(pageable, search, action, entityType);
         return ResponseEntity.ok(new ApiResponse<>(true, "Audit logs fetched", logs, null, LocalDateTime.now(), "/api/platform/audit-logs"));
     }
 }

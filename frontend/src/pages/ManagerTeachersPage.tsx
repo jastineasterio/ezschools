@@ -3,9 +3,12 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { Link } from 'react-router-dom';
+import { getSchoolUsers } from '@/services/users';
+import type { SchoolUserResponse } from '@/types/api';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { getTeachers, createTeacher, updateTeacher } from '@/services/people';
-import type { TeacherProfileResponse, CreateTeacherProfileRequest } from '@/types/academic';
-import type { PaginatedResponse } from '@/types/api';
+import type { Teacher, CreateTeacherRequest, UpdateTeacherRequest } from '@/services/people';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -20,7 +23,7 @@ import { Plus, MoreVertical } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const teacherSchema = z.object({
-  userId: z.number().min(1, 'User ID is required'),
+  userId: z.number().min(1, 'Teacher account is required'),
   employeeNumber: z.string().optional(),
   gender: z.string().optional(),
   dateOfBirth: z.string().optional(),
@@ -51,20 +54,22 @@ export function ManagerTeachersPage() {
   const [page, setPage] = useState(0);
   const [search, setSearch] = useState('');
   const [open, setOpen] = useState(false);
-  const [editingTeacher, setEditingTeacher] = useState<TeacherProfileResponse | null>(null);
+  const [editingTeacher, setEditingTeacher] = useState<Teacher | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, error: teachersError, refetch: refetchTeachers } = useQuery({
     queryKey: ['teachers', page, search],
-    queryFn: async () => {
-      const result = await getTeachers(page, 10);
-      return result as PaginatedResponse<TeacherProfileResponse>;
-    },
+    queryFn: () => getTeachers(page, 10),
+  });
+  const teacherUsersQuery = useQuery({
+    queryKey: ['school-users', 'teacher-profile-options'],
+    queryFn: () => getSchoolUsers({ page: 0, size: 500, role: 'TEACHER' }),
+    enabled: open,
   });
 
   const createMutation = useMutation({
-    mutationFn: (req: CreateTeacherProfileRequest) => createTeacher(req as any),
+    mutationFn: (req: CreateTeacherRequest) => createTeacher(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       setOpen(false);
@@ -74,8 +79,8 @@ export function ManagerTeachersPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateTeacherProfileRequest> }) =>
-      updateTeacher(id, data as any),
+    mutationFn: ({ id, data: request }: { id: number; data: UpdateTeacherRequest }) =>
+      updateTeacher(id, request),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['teachers'] });
       setOpen(false);
@@ -88,6 +93,8 @@ export function ManagerTeachersPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<TeacherFormValues>({
     resolver: zodResolver(teacherSchema),
@@ -120,8 +127,16 @@ export function ManagerTeachersPage() {
       });
     }
   };
+  const teacherAccountOptions = (teacherUsersQuery.data?.content ?? [])
+    .filter((account: SchoolUserResponse) => account.roles.includes('TEACHER')
+      && (account.isActive || account.id === editingTeacher?.userId)
+      && !data?.content.some((profile) => profile.userId === account.id && profile.id !== editingTeacher?.id))
+    .map((account: SchoolUserResponse) => ({
+      value: String(account.id),
+      label: `${account.firstName} ${account.lastName} (${account.email})`,
+    }));
 
-  const handleEdit = (teacher: TeacherProfileResponse) => {
+  const handleEdit = (teacher: Teacher) => {
     setEditingTeacher(teacher);
     reset({
       userId: teacher.userId,
@@ -175,9 +190,14 @@ export function ManagerTeachersPage() {
           <h1 className="text-3xl font-bold">Teachers</h1>
           <p className="mt-1 text-muted-foreground">Manage teachers in your school</p>
         </div>
-        <Button onClick={() => { setEditingTeacher(null); setOpen(true); }}>
-          <Plus className="mr-2 h-4 w-4" /> Add Teacher
-        </Button>
+        <div className="flex flex-wrap items-center gap-3">
+          <Link to="/school/teacher-assignments" className="text-sm font-medium text-primary hover:underline">
+            Manage teaching assignments
+          </Link>
+          <Button onClick={() => { setEditingTeacher(null); setOpen(true); }}>
+            <Plus className="mr-2 h-4 w-4" /> Add Teacher
+          </Button>
+        </div>
       </div>
 
       <Card className="p-4">
@@ -218,7 +238,7 @@ export function ManagerTeachersPage() {
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((teacher: any) => (
+                  {data?.content?.map((teacher) => (
                     <TableRow key={teacher.id}>
                       <TableCell className="font-medium">{teacher.employeeNumber || '-'}</TableCell>
                       <TableCell>{teacher.firstName} {teacher.lastName}</TableCell>
@@ -247,6 +267,18 @@ export function ManagerTeachersPage() {
                 </TableBody>
               </Table>
             </div>
+
+            {teachersError && (
+              <Alert variant="destructive" className="mt-4">
+                <AlertTitle>Unable to load teachers</AlertTitle>
+                <AlertDescription>
+                  {teachersError instanceof Error ? teachersError.message : 'Please try again.'}
+                  <Button variant="outline" size="sm" className="ml-3" onClick={() => refetchTeachers()}>
+                    Retry
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
 
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
@@ -286,11 +318,29 @@ export function ManagerTeachersPage() {
               <AlertDescription>{formError}</AlertDescription>
             </Alert>
           )}
+          {teacherUsersQuery.error && (
+            <Alert variant="destructive">
+              <AlertTitle>Unable to load eligible teacher accounts</AlertTitle>
+              <AlertDescription>
+                {teacherUsersQuery.error instanceof Error ? teacherUsersQuery.error.message : 'Please try again.'}
+                <Button variant="outline" size="sm" className="ml-3" onClick={() => teacherUsersQuery.refetch()}>
+                  Retry
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <label className="text-sm font-medium">User ID *</label>
-                <Input type="number" {...register('userId', { valueAsNumber: true })} />
+                <SearchableSelect
+                  label="Teacher account *"
+                  value={watch('userId') ? String(watch('userId')) : ''}
+                  options={teacherAccountOptions}
+                  placeholder="Choose an eligible teacher account"
+                  loading={teacherUsersQuery.isLoading}
+                  onChange={(event) => setValue('userId', Number(event.target.value) || 0, { shouldValidate: true })}
+                  emptyMessage="No eligible teacher accounts found"
+                />
                 {errors.userId && <p className="text-sm text-destructive">{errors.userId.message}</p>}
               </div>
               <div className="space-y-2">
@@ -343,4 +393,3 @@ export function ManagerTeachersPage() {
     </div>
   );
 }
-

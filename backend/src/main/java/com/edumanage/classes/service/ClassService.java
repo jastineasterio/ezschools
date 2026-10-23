@@ -26,14 +26,13 @@ public class ClassService {
         this.auditLogService = auditLogService;
     }
 
-    public PageResponse<ClassDto> list(Pageable pageable) {
+    public PageResponse<ClassDto> list(Pageable pageable, String search) {
         Long tenantId = TenantContext.getTenantId();
-        Page<Class> page;
-        if (tenantId != null) {
-            page = classRepository.findBySchoolId(tenantId, pageable);
-        } else {
-            page = classRepository.findAll(pageable);
+        if (tenantId == null && !TenantContext.isSuperAdmin()) {
+            throw new ForbiddenException("A school assignment is required");
         }
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        Page<Class> page = classRepository.search(tenantId, normalizedSearch, pageable);
         return PageResponse.from(page.map(this::mapToDto));
     }
 
@@ -42,23 +41,17 @@ public class ClassService {
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(clazz.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(clazz.getSchoolId());
 
         return mapToDto(clazz);
     }
 
     @Transactional
     public ClassDto create(CreateClassRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
 
         if (classRepository.existsBySchoolIdAndName(tenantId, request.getName())) {
-            throw new ConflictException("Class name already exists for this school");
+            throw new ConflictException("Class name '" + request.getName() + "' already exists for this school");
         }
 
         Class clazz = new Class();
@@ -82,14 +75,11 @@ public class ClassService {
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(clazz.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(clazz.getSchoolId());
 
         if (!clazz.getName().equals(request.getName()) &&
                 classRepository.existsBySchoolIdAndName(clazz.getSchoolId(), request.getName())) {
-            throw new ConflictException("Class name already exists for this school");
+            throw new ConflictException("Class name '" + request.getName() + "' already exists for this school");
         }
 
         clazz.setName(request.getName());
@@ -115,10 +105,7 @@ public class ClassService {
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(clazz.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(clazz.getSchoolId());
 
         clazz.setStatus(status);
         classRepository.save(clazz);

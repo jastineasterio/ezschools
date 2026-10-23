@@ -25,6 +25,7 @@ public class TeacherAssignmentDto {
     private String streamName;
     private Long academicYearId;
     private String academicYearName;
+    private Long studentCount;
     private boolean isClassTeacher;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

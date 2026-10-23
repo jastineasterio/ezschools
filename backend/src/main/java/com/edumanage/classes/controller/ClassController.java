@@ -23,8 +23,9 @@ public class ClassController {
     private final ClassService classService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ClassDto>>> list(Pageable pageable) {
-        var classes = classService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<ClassDto>>> list(
+            Pageable pageable, @RequestParam(required = false) String search) {
+        var classes = classService.list(pageable, search);
         return ResponseEntity.ok(new ApiResponse<>(true, "Classes fetched", classes, null, LocalDateTime.now(), "/api/school/classes"));
     }
 

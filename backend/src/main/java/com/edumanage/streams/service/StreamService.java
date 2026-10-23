@@ -33,15 +33,18 @@ public class StreamService {
         this.auditLogService = auditLogService;
     }
 
-    public PageResponse<StreamDto> list(Pageable pageable) {
+    public PageResponse<StreamDto> list(Pageable pageable, String search) {
         Long tenantId = TenantContext.getTenantId();
-        Page<Stream> page;
-        if (tenantId != null) {
-            page = streamRepository.findBySchoolId(tenantId, pageable);
-        } else {
-            page = streamRepository.findAll(pageable);
+        if (tenantId == null && !TenantContext.isSuperAdmin()) {
+            throw new ForbiddenException("A school assignment is required");
         }
-        return PageResponse.from(page.map(stream -> mapToDto(stream, null)));
+        String normalizedSearch = search == null || search.isBlank() ? null : search.trim();
+        Page<Stream> page = streamRepository.search(tenantId, normalizedSearch, pageable);
+        return PageResponse.from(page.map(stream -> mapToDto(
+                stream,
+                classRepository.findBySchoolIdAndId(stream.getSchoolId(), stream.getClassId())
+                        .map(com.edumanage.classes.entity.Class::getName)
+                        .orElse(null))));
     }
 
     public List<StreamDto> listByClass(Long classId) {
@@ -49,10 +52,7 @@ public class StreamService {
                 .filter(c -> !c.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(clazz.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(clazz.getSchoolId());
 
         return streamRepository.findByClassIdAndSchoolId(classId, clazz.getSchoolId()).stream()
                 .map(stream -> mapToDto(stream, clazz.getName()))
@@ -64,28 +64,17 @@ public class StreamService {
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(stream.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(stream.getSchoolId());
+        validateClass(stream.getClassId(), stream.getSchoolId());
 
         return mapToDto(stream, null);
     }
 
     @Transactional
     public StreamDto create(CreateStreamRequest request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("Access denied");
-        }
+        Long tenantId = TenantContext.requireTenantId();
 
-        var clazz = classRepository.findById(request.getClassId())
-                .filter(c -> !c.isDeleted())
-                .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
-
-        if (!tenantId.equals(clazz.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        var clazz = validateClass(request.getClassId(), tenantId);
 
         if (streamRepository.existsByClassIdAndName(request.getClassId(), request.getName())) {
             throw new ConflictException("Stream name already exists for this class");
@@ -117,18 +106,9 @@ public class StreamService {
                 .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
 
         Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(stream.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(stream.getSchoolId());
 
-        if (!stream.getClassId().equals(request.getClassId())) {
-            var clazz = classRepository.findById(request.getClassId())
-                    .filter(c -> !c.isDeleted())
-                    .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
-            if (!tenantId.equals(clazz.getSchoolId())) {
-                throw new ForbiddenException("Access denied");
-            }
-        }
+        var clazz = validateClass(request.getClassId(), stream.getSchoolId());
 
         if (!stream.getName().equals(request.getName()) &&
                 streamRepository.existsByClassIdAndName(request.getClassId(), request.getName())) {
@@ -163,10 +143,8 @@ public class StreamService {
                 .filter(s -> !s.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("Stream not found"));
 
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId != null && !tenantId.equals(stream.getSchoolId())) {
-            throw new ForbiddenException("Access denied");
-        }
+        TenantContext.assertTenantAccess(stream.getSchoolId());
+        validateClass(stream.getClassId(), stream.getSchoolId());
 
         stream.setStatus(status);
         streamRepository.save(stream);
@@ -175,6 +153,17 @@ public class StreamService {
                 "Updated stream " + stream.getName() + " status to " + status, null, null, null);
 
         return mapToDto(stream, null);
+    }
+
+    private com.edumanage.classes.entity.Class validateClass(Long classId, Long schoolId) {
+        var clazz = classRepository.findById(classId)
+                .filter(c -> !c.isDeleted())
+                .orElseThrow(() -> new ResourceNotFoundException("Class not found"));
+        if (!schoolId.equals(clazz.getSchoolId())) {
+            throw new ForbiddenException("Class does not belong to this school");
+        }
+        TenantContext.assertTenantAccess(clazz.getSchoolId());
+        return clazz;
     }
 
     private StreamDto mapToDto(Stream entity, String className) {

@@ -1,6 +1,6 @@
 package com.edumanage.auth.controller;
 
-import com.edumanage.auth.dto.LoginRequest;
+import com.edumanage.auth.dto.ChangePasswordRequest;
 import com.edumanage.auth.dto.LoginResponse;
 import com.edumanage.auth.dto.RefreshTokenRequest;
 import com.edumanage.auth.dto.TokenResponse;
@@ -42,7 +42,11 @@ public class AuthController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Logout successful", null, null, LocalDateTime.now(), "/api/auth/logout"));
     }
 
-    @GetMapping("/me")
+    @PostMapping("/change-password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        authService.changePassword(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Password changed", null, null, LocalDateTime.now(), "/api/auth/change-password"));
+    }
     public ResponseEntity<ApiResponse<com.edumanage.users.dto.UserDto>> me() {
         var user = authService.getCurrentUser();
         return ResponseEntity.ok(new ApiResponse<>(true, "Current user", user, null, LocalDateTime.now(), "/api/auth/me"));

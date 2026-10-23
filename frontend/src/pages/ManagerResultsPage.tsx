@@ -1,7 +1,16 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getResults, getExaminationResults, submitResult, approveResult, rejectResult, publishResult } from '@/services/assessments';
-import { api } from '@/services/api';
+import {
+  getResults,
+  getExaminationResults,
+  createResult,
+  updateResult,
+  submitResult,
+  approveResult,
+  rejectResult,
+  publishResult,
+} from '@/services/assessments';
+import { getApiErrorMessage } from '@/services/api';
 import type { ResultResponse, CreateResultRequest } from '@/types/academic';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -10,6 +19,7 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
 import { Plus, RefreshCw, Edit, CheckCircle, XCircle, Send, Eye } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
@@ -31,7 +41,7 @@ export function ManagerResultsPage() {
   const [editResult, setEditResult] = useState<ResultResponse | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: examinationFilter ? ['results', 'examination', examinationFilter, page] : ['results', page],
     queryFn: async () => {
       if (examinationFilter) {
@@ -42,7 +52,7 @@ export function ManagerResultsPage() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (req: CreateResultRequest) => api.post('/school/results', req).then(r => r.data),
+    mutationFn: (req: CreateResultRequest) => createResult(req),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       setOpen(false);
@@ -50,8 +60,8 @@ export function ManagerResultsPage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateResultRequest> }) =>
-      api.put(`/school/results/${id}`, data).then(r => r.data),
+    mutationFn: ({ id, data }: { id: number; data: CreateResultRequest }) =>
+      updateResult(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['results'] });
       setOpen(false);
@@ -107,6 +117,13 @@ export function ManagerResultsPage() {
   };
 
   const handleFormSubmit = editResult ? handleSubmit(handleUpdate) : handleSubmit(handleCreate);
+  const mutationError =
+    createMutation.error ||
+    updateMutation.error ||
+    submitMutation.error ||
+    approveMutation.error ||
+    rejectMutation.error ||
+    publishMutation.error;
 
   const openCreateDialog = () => {
     setEditResult(null);
@@ -157,6 +174,26 @@ export function ManagerResultsPage() {
         </Button>
       </div>
 
+      {isError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load results</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(error, 'Results could not be loaded.')}
+            <Button className="ml-3" size="sm" variant="outline" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {mutationError && (
+        <Alert variant="destructive">
+          <AlertTitle>Result action failed</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(mutationError, 'Check the result details and try again.')}
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Card className="p-4">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row">
           <Input
@@ -198,14 +235,14 @@ export function ManagerResultsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.content?.length === 0 && (
+                  {!isError && data?.content?.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={8} className="text-center text-muted-foreground">
                         No results found
                       </TableCell>
                     </TableRow>
                   )}
-                  {data?.content?.map((result: any) => (
+                  {data?.content?.map((result) => (
                     <TableRow key={result.id}>
                       <TableCell className="font-medium">{result.studentName}</TableCell>
                       <TableCell>{result.admissionNumber}</TableCell>
@@ -307,4 +344,3 @@ export function ManagerResultsPage() {
     </div>
   );
 }
-

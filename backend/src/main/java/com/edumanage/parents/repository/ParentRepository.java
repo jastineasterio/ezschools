@@ -15,4 +15,5 @@ public interface ParentRepository extends JpaRepository<Parent, Long> {
     Page<Parent> findBySchoolIdAndDeletedAtIsNull(Long schoolId, Pageable pageable);
     Optional<Parent> findBySchoolIdAndId(Long schoolId, Long id);
     Optional<Parent> findByUserId(Long userId);
+    Optional<Parent> findFirstBySchoolIdAndEmailIgnoreCase(Long schoolId, String email);
 }

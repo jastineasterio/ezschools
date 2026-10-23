@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/school/transport/routes")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_TRANSPORT_OFFICER', 'ROLE_MANAGER', 'ROLE_SUPER_ADMIN')")
 @RequiredArgsConstructor
 public class RouteController {
 

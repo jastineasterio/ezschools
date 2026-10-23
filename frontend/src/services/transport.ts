@@ -1,4 +1,4 @@
-import { api } from './api';
+import { api as http, createApiResponseClient } from './api';
 import type { PaginatedResponse } from '@/types/api';
 import type {
   VehicleResponse,
@@ -10,6 +10,8 @@ import type {
   TransportAssignmentResponse,
   CreateTransportAssignmentRequest,
 } from '@/types/transport';
+
+const api = createApiResponseClient(http);
 
 export async function getVehicles(page?: number, size?: number) {
   const params: Record<string, number> = {};

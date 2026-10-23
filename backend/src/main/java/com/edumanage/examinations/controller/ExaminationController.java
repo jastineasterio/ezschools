@@ -16,7 +16,7 @@ import java.time.LocalDateTime;
 
 @RestController
 @RequestMapping("/school/examinations")
-@PreAuthorize("isAuthenticated()")
+@PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
 @RequiredArgsConstructor
 public class ExaminationController {
 
@@ -35,12 +35,14 @@ public class ExaminationController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ExaminationDto>> create(@Valid @RequestBody CreateExaminationRequest request) {
         var examination = examinationService.create(request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Examination created", examination, null, LocalDateTime.now(), "/api/school/examinations"));
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ExaminationDto>> update(@PathVariable Long id,
                                                               @Valid @RequestBody CreateExaminationRequest request) {
         var examination = examinationService.update(id, request);
@@ -48,6 +50,7 @@ public class ExaminationController {
     }
 
     @PatchMapping("/{id}/status")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public ResponseEntity<ApiResponse<ExaminationDto>> updateStatus(@PathVariable Long id,
                                                                     @RequestParam String status) {
         var examination = examinationService.updateStatus(id, status);

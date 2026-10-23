@@ -1,6 +1,7 @@
 package com.edumanage.departments.controller;
 
 import com.edumanage.departments.dto.CreateDepartmentRequest;
+import com.edumanage.departments.dto.DepartmentHeadOptionDto;
 import com.edumanage.departments.dto.DepartmentDto;
 import com.edumanage.departments.service.DepartmentService;
 import com.edumanage.common.dto.ApiResponse;
@@ -13,6 +14,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RestController
 @RequestMapping("/school/departments")
@@ -23,9 +25,18 @@ public class DepartmentController {
     private final DepartmentService departmentService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<DepartmentDto>>> list(Pageable pageable) {
-        var departments = departmentService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<DepartmentDto>>> list(
+            Pageable pageable, @RequestParam(required = false) String search) {
+        var departments = departmentService.list(pageable, search);
         return ResponseEntity.ok(new ApiResponse<>(true, "Departments fetched", departments, null, LocalDateTime.now(), "/api/school/departments"));
+    }
+
+    @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
+    @GetMapping("/eligible-heads")
+    public ResponseEntity<ApiResponse<List<DepartmentHeadOptionDto>>> listEligibleHeads() {
+        var heads = departmentService.listEligibleHeads();
+        return ResponseEntity.ok(new ApiResponse<>(true, "Eligible department heads fetched", heads, null,
+                LocalDateTime.now(), "/api/school/departments/eligible-heads"));
     }
 
     @GetMapping("/{id}")

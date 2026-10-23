@@ -16,7 +16,6 @@ public class CreateStudentProfileRequest {
     @NotNull(message = "User ID is required")
     private Long userId;
 
-    @NotBlank(message = "Admission number is required")
     private String admissionNumber;
 
     @NotBlank(message = "First name is required")

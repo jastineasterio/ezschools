@@ -10,6 +10,7 @@ import com.edumanage.finance.repository.FinancialCategoryRepository;
 import com.edumanage.finance.repository.FinancialTransactionRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
+import com.edumanage.security.AccessGuard;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,16 +27,20 @@ public class FinancialTransactionService {
     private final FinancialTransactionRepository financialTransactionRepository;
     private final FinancialCategoryRepository financialCategoryRepository;
     private final AuditLogService auditLogService;
+    private final AccessGuard accessGuard;
 
     public FinancialTransactionService(FinancialTransactionRepository financialTransactionRepository,
                                        FinancialCategoryRepository financialCategoryRepository,
-                                       AuditLogService auditLogService) {
+                                       AuditLogService auditLogService,
+                                       AccessGuard accessGuard) {
         this.financialTransactionRepository = financialTransactionRepository;
         this.financialCategoryRepository = financialCategoryRepository;
         this.auditLogService = auditLogService;
+        this.accessGuard = accessGuard;
     }
 
     public PageResponse<FinancialTransactionDto> list(Pageable pageable) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         Page<FinancialTransaction> page;
         if (tenantId != null) {
@@ -48,6 +53,7 @@ public class FinancialTransactionService {
 
     @Transactional
     public FinancialTransactionDto create(CreateFinancialTransactionRequest request) {
+        accessGuard.assertFinancialAccess();
         Long tenantId = TenantContext.getTenantId();
         if (tenantId == null) {
             throw new ForbiddenException("Access denied");

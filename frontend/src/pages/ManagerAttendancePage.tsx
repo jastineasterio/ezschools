@@ -1,7 +1,7 @@
 ﻿import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { createAttendance, bulkCreateAttendance, updateAttendance } from '@/services/assessments';
-import { api } from '@/services/api';
+import { createAttendance, bulkCreateAttendance, getAttendance, updateAttendance } from '@/services/assessments';
+import { getApiErrorMessage } from '@/services/api';
 import type { AttendanceResponse, CreateAttendanceRequest } from '@/types/academic';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -11,11 +11,11 @@ import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Skeleton } from '@/components/ui/Skeleton';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/Alert';
 import { Plus, RefreshCw, Edit } from 'lucide-react';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { PaginatedResponse } from '@/types/api';
 
 const attendanceSchema = z.object({
   studentId: z.number().min(1, 'Student is required'),
@@ -32,6 +32,11 @@ const attendanceSchema = z.object({
 const bulkAttendanceSchema = z.object({
   classId: z.number().min(1, 'Class is required'),
   academicYearId: z.number().min(1, 'Academic year is required'),
+  studentIds: z.string().trim().min(1, 'Enter at least one student ID')
+    .refine((value) => {
+      const ids = value.split(',').map((id) => id.trim());
+      return ids.every((id) => /^[1-9]\d*$/.test(id)) && new Set(ids).size === ids.length;
+    }, 'Enter unique, positive student IDs separated by commas'),
   attendanceDate: z.string().min(1, 'Date is required'),
   status: z.string().min(1, 'Status is required'),
   streamId: z.number().optional(),
@@ -59,15 +64,14 @@ export function ManagerAttendancePage() {
   const [editRecord, setEditRecord] = useState<AttendanceResponse | null>(null);
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, error, refetch } = useQuery({
     queryKey: ['attendance', page, classFilter, dateFilter],
-    queryFn: async () => {
-      const params: Record<string, number | string> = { page, size: 10 };
-      if (classFilter) params.classId = Number(classFilter);
-      if (dateFilter) params.date = dateFilter;
-      const { data } = await api.get<PaginatedResponse<AttendanceResponse>>('/school/attendance', { params });
-      return data;
-    },
+    queryFn: () => getAttendance(
+      page,
+      10,
+      classFilter ? Number(classFilter) : undefined,
+      dateFilter || undefined
+    ),
   });
 
   const createMutation = useMutation({
@@ -87,8 +91,8 @@ export function ManagerAttendancePage() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: number; data: Partial<CreateAttendanceRequest> }) =>
-      updateAttendance(id, data as any),
+    mutationFn: ({ id, data }: { id: number; data: CreateAttendanceRequest }) =>
+      updateAttendance(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       setOpen(false);
@@ -118,10 +122,8 @@ export function ManagerAttendancePage() {
   };
 
   const handleBulkCreate = (values: BulkAttendanceFormValues) => {
-    const payload: CreateAttendanceRequest[] = [];
-    for (let i = 1; i <= 10; i++) {
-      payload.push({
-        studentId: i,
+    const payload: CreateAttendanceRequest[] = values.studentIds.split(',').map((id) => ({
+        studentId: Number(id.trim()),
         classId: values.classId,
         academicYearId: values.academicYearId,
         attendanceDate: values.attendanceDate,
@@ -130,8 +132,7 @@ export function ManagerAttendancePage() {
         subjectId: values.subjectId,
         teacherId: values.teacherId,
         remarks: values.remarks,
-      });
-    }
+      }));
     bulkMutation.mutate(payload);
   };
 
@@ -175,6 +176,29 @@ export function ManagerAttendancePage() {
           </Button>
         </div>
       </div>
+
+      {isError && (
+        <Alert variant="destructive">
+          <AlertTitle>Unable to load attendance</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(error, 'Attendance records could not be loaded.')}
+            <Button className="ml-3" size="sm" variant="outline" onClick={() => void refetch()}>
+              Try again
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+      {(createMutation.isError || bulkMutation.isError || updateMutation.isError) && (
+        <Alert variant="destructive">
+          <AlertTitle>Attendance was not saved</AlertTitle>
+          <AlertDescription>
+            {getApiErrorMessage(
+              createMutation.error || bulkMutation.error || updateMutation.error,
+              'Check the attendance details and try again.'
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       <Card className="p-4">
         <div className="mb-4 flex flex-col gap-4 sm:flex-row">
@@ -222,7 +246,7 @@ export function ManagerAttendancePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data?.content?.length === 0 && (
+                  {!isError && data?.content?.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center text-muted-foreground">
                         No attendance records found
@@ -349,6 +373,11 @@ export function ManagerAttendancePage() {
               {bulkErrors.academicYearId && <p className="text-sm text-destructive">{bulkErrors.academicYearId.message}</p>}
             </div>
             <div className="space-y-2">
+              <label className="text-sm font-medium">Student IDs (comma-separated) *</label>
+              <Input placeholder="e.g. 18, 24, 31" {...registerBulk('studentIds')} />
+              {bulkErrors.studentIds && <p className="text-sm text-destructive">{bulkErrors.studentIds.message}</p>}
+            </div>
+            <div className="space-y-2">
               <label className="text-sm font-medium">Date *</label>
               <Input type="date" {...registerBulk('attendanceDate')} />
               {bulkErrors.attendanceDate && <p className="text-sm text-destructive">{bulkErrors.attendanceDate.message}</p>}
@@ -389,4 +418,3 @@ export function ManagerAttendancePage() {
     </div>
   );
 }
-

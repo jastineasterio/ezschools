@@ -27,7 +27,6 @@ import {
   Moon,
 } from 'lucide-react';
 import { useState } from 'react';
-import { logout } from '@/services/api';
 import { useTheme } from '@/store/ThemeContext';
 
 const navSections = [
@@ -45,6 +44,7 @@ const navSections = [
       { to: '/school/classes', icon: BookOpen, label: 'Classes' },
       { to: '/school/streams', icon: BookOpen, label: 'Streams' },
       { to: '/school/subjects', icon: BookOpen, label: 'Subjects' },
+      { to: '/school/stream-subjects', icon: BookOpenCheck, label: 'Stream Subjects' },
       { to: '/school/departments', icon: Users, label: 'Departments' },
     ],
   },
@@ -52,7 +52,10 @@ const navSections = [
     title: 'People',
     items: [
       { to: '/school/students', icon: Users, label: 'Students' },
+      { to: '/school/enrollments', icon: ClipboardCheck, label: 'Enrollments' },
       { to: '/school/teachers', icon: UserCheck, label: 'Teachers' },
+      { to: '/school/teacher-assignments', icon: BookOpenCheck, label: 'Teaching Assignments' },
+      { to: '/school/timetable', icon: CalendarDays, label: 'Timetable' },
       { to: '/school/parents', icon: Users, label: 'Parents/Guardians' },
     ],
   },
@@ -68,6 +71,7 @@ const navSections = [
       { to: '/school/attendance', icon: ClipboardCheck, label: 'Attendance' },
       { to: '/school/examinations', icon: GraduationCap, label: 'Examinations' },
       { to: '/school/results', icon: FileText, label: 'Results' },
+      { to: '/school/certificates', icon: GraduationCap, label: 'Certificates' },
     ],
   },
   {
@@ -113,7 +117,7 @@ const navSections = [
   },
 ];
 export function SchoolLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { branding } = useBranding();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -123,7 +127,7 @@ export function SchoolLayout() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate('/login', { replace: true });
   };
 
   const primaryColor = branding?.primaryColor || '#3b82f6';
