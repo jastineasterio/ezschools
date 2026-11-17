@@ -10,6 +10,9 @@ import com.edumanage.library.entity.LibraryMember;
 import com.edumanage.library.repository.BorrowingRepository;
 import com.edumanage.library.repository.FineRepository;
 import com.edumanage.library.repository.LibraryMemberRepository;
+import com.edumanage.studentprofiles.repository.StudentProfileRepository;
+import com.edumanage.teacherprofiles.repository.TeacherProfileRepository;
+import com.edumanage.users.repository.UserRepository;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
@@ -32,16 +35,26 @@ public class FineService {
     private final LibraryMemberRepository libraryMemberRepository;
     private final AuditLogService auditLogService;
     private final AccessGuard accessGuard;
+    private final StudentProfileRepository studentProfileRepository;
+    private final TeacherProfileRepository teacherProfileRepository;
+    private final UserRepository userRepository;
 
     public FineService(FineRepository fineRepository,
                        BorrowingRepository borrowingRepository,
                        LibraryMemberRepository libraryMemberRepository,
-                       AuditLogService auditLogService, AccessGuard accessGuard) {
+                       AuditLogService auditLogService, 
+                       AccessGuard accessGuard,
+                       StudentProfileRepository studentProfileRepository,
+                       TeacherProfileRepository teacherProfileRepository,
+                       UserRepository userRepository) {
         this.fineRepository = fineRepository;
         this.borrowingRepository = borrowingRepository;
         this.libraryMemberRepository = libraryMemberRepository;
         this.auditLogService = auditLogService;
         this.accessGuard = accessGuard;
+        this.studentProfileRepository = studentProfileRepository;
+        this.teacherProfileRepository = teacherProfileRepository;
+        this.userRepository = userRepository;
     }
 
     public PageResponse<FineDto> list(Pageable pageable) {
@@ -195,7 +208,36 @@ public class FineService {
         dto.setRemarks(entity.getRemarks());
         if (entity.getMemberId() != null) {
             libraryMemberRepository.findById(entity.getMemberId()).ifPresent(m -> {
-                dto.setMemberName(m.getMembershipNumber());
+                String mn = m.getMembershipNumber();
+                try {
+                    if ("STUDENT".equalsIgnoreCase(m.getMemberType())) {
+                        var sp = studentProfileRepository.findById(m.getMemberId());
+                        if (sp.isPresent()) {
+                            var p = sp.get();
+                            String full = ((p.getFirstName() != null ? p.getFirstName() : "") + " " + (p.getMiddleName() != null ? p.getMiddleName() + " " : "") + (p.getLastName() != null ? p.getLastName() : "")).replaceAll("\\s+", " ").trim();
+                            if (!full.isEmpty()) mn = full;
+                        }
+                    } else if ("TEACHER".equalsIgnoreCase(m.getMemberType())) {
+                        var tp = teacherProfileRepository.findById(m.getMemberId());
+                        if (tp.isPresent()) {
+                            var p = tp.get();
+                            if (p.getUserId() != null) {
+                                var u = userRepository.findById(p.getUserId());
+                                if (u.isPresent()) {
+                                    var user = u.get();
+                                    String nm = ((user.getFirstName() != null ? user.getFirstName() : "") + " " + (user.getLastName() != null ? user.getLastName() : "")).trim();
+                                    if (!nm.isEmpty()) mn = nm;
+                                }
+                            }
+                            if ((mn == null || mn.equals(m.getMembershipNumber())) && p.getEmployeeNumber() != null) {
+                                mn = p.getEmployeeNumber();
+                            }
+                        }
+                    }
+                } catch (Exception ignored) {
+                }
+                dto.setMemberName(mn);
+                dto.setMembershipNumber(m.getMembershipNumber());
             });
         }
         dto.setCreatedAt(entity.getCreatedAt());
@@ -203,3 +245,4 @@ public class FineService {
         return dto;
     }
 }
+

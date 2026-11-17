@@ -9,6 +9,7 @@ import com.edumanage.notifications.dto.NotificationChannelsDto;
 import com.edumanage.notifications.dto.RecipientPreviewDto;
 import com.edumanage.notifications.service.CommunicationCampaignService;
 import com.edumanage.notifications.service.CommunicationSettingsService;
+import com.edumanage.tenant.TenantContext;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -36,7 +37,8 @@ public class CommunicationController {
 
     @GetMapping("/channels")
     public ResponseEntity<ApiResponse<NotificationChannelsDto>> getChannels() {
-        var channels = settingsService.getGlobalSettings();
+        Long schoolId = TenantContext.requireTenantId();
+        var channels = settingsService.getSchoolSettings(schoolId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Notification channels fetched", channels, null,
                 LocalDateTime.now(), "/api/school/communications/channels"));
     }

@@ -23,8 +23,10 @@ public class ExaminationTypeController {
     private final ExaminationTypeService examinationTypeService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<PageResponse<ExaminationTypeDto>>> list(Pageable pageable) {
-        var examinationTypes = examinationTypeService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<ExaminationTypeDto>>> list(Pageable pageable,
+                                                                              @RequestParam(required = false) String search,
+                                                                              @RequestParam(required = false) Boolean active) {
+        var examinationTypes = examinationTypeService.list(pageable, search, active);
         return ResponseEntity.ok(new ApiResponse<>(true, "Examination types fetched", examinationTypes, null, LocalDateTime.now(), "/api/school/examination-types"));
     }
 
@@ -45,5 +47,18 @@ public class ExaminationTypeController {
                                                                   @Valid @RequestBody CreateExaminationTypeRequest request) {
         var examinationType = examinationTypeService.update(id, request);
         return ResponseEntity.ok(new ApiResponse<>(true, "Examination type updated", examinationType, null, LocalDateTime.now(), "/api/school/examination-types/" + id));
+    }
+
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<ApiResponse<ExaminationTypeDto>> setActive(@PathVariable Long id,
+                                                                     @RequestParam Boolean active) {
+        var examinationType = examinationTypeService.setActive(id, active);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Examination type status updated", examinationType, null, LocalDateTime.now(), "/api/school/examination-types/" + id + "/status"));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
+        examinationTypeService.delete(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Examination type deleted", null, null, LocalDateTime.now(), "/api/school/examination-types/" + id));
     }
 }

@@ -19,4 +19,5 @@ public interface StudentProfileRepository extends JpaRepository<StudentProfile, 
     boolean existsBySchoolIdAndAdmissionNumber(Long schoolId, String admissionNumber);
     long countBySchoolIdAndAdmissionNumberStartingWith(Long schoolId, String prefix);
     long countBySchoolIdAndDeletedAtIsNull(Long schoolId);
+    List<StudentProfile> findBySchoolIdAndIdIn(Long schoolId, List<Long> ids);
 }

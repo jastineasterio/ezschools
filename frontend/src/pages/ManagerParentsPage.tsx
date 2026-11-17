@@ -15,7 +15,7 @@ import { DropdownMenu, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Select } from '@/components/ui/Select';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/Alert';
-import { Plus, MoreVertical, Link2 } from 'lucide-react';
+import { Plus, MoreVertical } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 
 const parentSchema = z.object({

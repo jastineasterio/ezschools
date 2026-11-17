@@ -6,6 +6,25 @@ import { Card } from '@/components/ui/Card';
 import { getApiErrorMessage, unwrapApiResponse, api } from '@/services/api';
 import type { ApiResponse } from '@/types/api';
 import { useAuth } from '@/store/AuthContext';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
+} from 'recharts';
+import { Users, BookOpen, GraduationCap, ClipboardCheck, FileText, Calendar } from 'lucide-react';
+import { StatCard } from '@/components/dashboard/StatCard';
+import { SectionCard } from '@/components/dashboard/EmptyState';
+import { formatDate, formatNumber } from '@/lib/format';
 
 interface TeacherAssignment {
   id: number;
@@ -46,6 +65,18 @@ interface TeacherDashboard {
   assignments: TeacherAssignment[];
   timetable: TimetableLesson[];
   upcomingExaminations: UpcomingExamination[];
+  assignedClassesCount?: number;
+  assignedSubjectsCount?: number;
+  totalUniqueStudents?: number;
+  upcomingExaminationsCount?: number;
+  attendanceTasksCount?: number;
+  unreadNotificationsCount?: number;
+  announcementsCount?: number;
+  performanceChart?: Array<{ name: string; averageMarks: number; passRate: number }>;
+  attendanceChart?: Array<{ date: string; present: number; absent: number; late: number; excused: number }>;
+  classPerformance?: Array<{ className: string; streamName: string | null; averageMarks: number; studentCount: number }>;
+  subjectPerformance?: Array<{ subjectName: string; averageMarks: number; studentCount: number }>;
+  studentDistribution?: Array<{ name: string; count: number }>;
 }
 
 interface AttendanceStudent {
@@ -67,13 +98,9 @@ interface ExamStudent {
   editable: boolean;
 }
 
-const attendanceStatuses = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED'];
+const COLORS = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
-function formatDate(value: string | null) {
-  if (!value) return 'Date not set';
-  return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium', timeZone: 'UTC' })
-    .format(new Date(`${value}T00:00:00Z`));
-}
+const attendanceStatuses = ['Present', 'Absent', 'Late', 'Excused'];
 
 function AttendancePanel({
   assignment,
@@ -121,8 +148,13 @@ function AttendancePanel({
   return (
     <Card className="space-y-4 p-5">
       <div>
-        <h3 className="font-semibold">{assignment.className}{assignment.streamName ? ` · ${assignment.streamName}` : ''}</h3>
-        <p className="text-sm text-muted-foreground">{assignment.subjectName} · {date}</p>
+        <h3 className="font-semibold">
+          {assignment.className}
+          {assignment.streamName ? ` · ${assignment.streamName}` : ''}
+        </h3>
+        <p className="text-sm text-muted-foreground">
+          {assignment.subjectName} · {date}
+        </p>
       </div>
       {rosterQuery.isLoading && <p className="text-sm text-muted-foreground">Loading class roster…</p>}
       {rosterQuery.isError && (
@@ -152,7 +184,7 @@ function AttendancePanel({
                   ) : (
                     <select
                       aria-label={`Attendance for ${student.studentName}`}
-                      className="rounded-md border bg-background px-3 py-2 text-sm"
+                      className="input w-auto min-w-[100px]"
                       value={statuses[student.studentId] ?? ''}
                       onChange={(event) => setStatuses((current) => ({
                         ...current,
@@ -264,7 +296,7 @@ function ExaminationMarksPanel({ examination }: { examination: UpcomingExaminati
                   {student.resultId == null || student.editable ? (
                     <input
                       aria-label={`Marks for ${student.studentName}`}
-                      className="w-32 rounded-md border bg-background px-3 py-2 text-sm"
+                      className="input w-32"
                       type="number"
                       min={0}
                       max={examination.maximumMarks}
@@ -308,7 +340,7 @@ function ExaminationMarksPanel({ examination }: { examination: UpcomingExaminati
               <AlertDescription>{getApiErrorMessage(submitResult.error, 'The result could not be submitted.')}</AlertDescription>
             </Alert>
           )}
-          {saveMarks.isSuccess && <p role="status" className="text-sm text-green-700">Marks saved as drafts.</p>}
+          {saveMarks.isSuccess && <p role="status" className="text-sm text-emerald-600 dark:text-emerald-400">Marks saved as drafts.</p>}
           {submissions.length > 0 && (
             <Button disabled={saveMarks.isPending} onClick={() => saveMarks.mutate(submissions)}>
               {saveMarks.isPending ? 'Saving marks…' : 'Save draft marks'}
@@ -338,11 +370,19 @@ export function TeacherDashboardPage() {
     (item) => item.id === Number(selectedAssignmentId)
   );
 
+  const performanceChart = dashboard?.performanceChart ?? [];
+  const attendanceChart = dashboard?.attendanceChart ?? [];
+  const classPerformance = dashboard?.classPerformance ?? [];
+  const subjectPerformance = dashboard?.subjectPerformance ?? [];
+  const studentDistribution = dashboard?.studentDistribution ?? [];
+
   return (
-    <main className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Welcome, {name}</h1>
-        <p className="mt-1 text-muted-foreground">Teacher Dashboard</p>
+    <main className="page space-y-6">
+      <div className="page-header">
+        <div>
+          <h1 className="page-title">Welcome, {name}</h1>
+          <p className="page-subtitle">Teacher workspace and class overview</p>
+        </div>
       </div>
 
       {dashboardQuery.isLoading && <p role="status" className="text-muted-foreground">Loading your school workspace…</p>}
@@ -360,14 +400,183 @@ export function TeacherDashboardPage() {
 
       {dashboard && (
         <>
-          <Card className="space-y-3 p-6">
-            <h2 className="text-lg font-semibold">Assigned classes and subjects</h2>
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Assigned Classes"
+              value={formatNumber(dashboard.assignedClassesCount ?? dashboard.assignments.length)}
+              icon={Users}
+              hint="Classes you are assigned to teach"
+            />
+            <StatCard
+              label="Assigned Subjects"
+              value={formatNumber(dashboard.assignedSubjectsCount ?? new Set(dashboard.assignments.map(a => a.subjectName)).size)}
+              icon={BookOpen}
+              hint="Subjects you teach"
+            />
+            <StatCard
+              label="Total Students"
+              value={formatNumber(dashboard.totalUniqueStudents ?? dashboard.assignments.reduce((s,a) => s + (a.studentCount || 0), 0))}
+              icon={GraduationCap}
+              hint="Unique students across assignments"
+            />
+            <StatCard
+              label="Upcoming Exams"
+              value={formatNumber(dashboard.upcomingExaminationsCount ?? dashboard.upcomingExaminations.length)}
+              icon={FileText}
+              hint="Examinations to prepare for"
+            />
+            <StatCard
+              label="Attendance Tasks"
+              value={formatNumber(dashboard.attendanceTasksCount ?? dashboard.assignments.length)}
+              icon={ClipboardCheck}
+              hint="Classes needing attendance"
+            />
+            <StatCard
+              label="Unread Notifications"
+              value={formatNumber(dashboard.unreadNotificationsCount ?? 0)}
+              icon={Calendar}
+              hint="Notifications requiring attention"
+            />
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SectionCard
+              title="Student Academic Performance"
+              description="Average marks and pass rate by subject"
+            >
+              {performanceChart.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No performance data available.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={performanceChart}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} interval={0} angle={-15} textAnchor="end" height={60} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="averageMarks" fill="#3b82f6" name="Average Marks" radius={[4, 4, 0, 0]} />
+                      <Bar dataKey="passRate" fill="#22c55e" name="Pass Rate (%)" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Attendance Statistics & Trends"
+              description="Last 7 days"
+            >
+              {attendanceChart.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No attendance data available.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <LineChart data={attendanceChart}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Line type="monotone" dataKey="present" stroke="#22c55e" name="Present" />
+                      <Line type="monotone" dataKey="absent" stroke="#ef4444" name="Absent" />
+                      <Line type="monotone" dataKey="late" stroke="#f59e0b" name="Late" />
+                      <Line type="monotone" dataKey="excused" stroke="#8b5cf6" name="Excused" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </SectionCard>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <SectionCard
+              title="Class Performance Comparisons"
+              description="Average performance by class/stream"
+            >
+              {classPerformance.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No class performance data available.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={classPerformance.map(c => ({ name: c.className + (c.streamName ? ' ' + c.streamName : ''), averageMarks: c.averageMarks, studentCount: c.studentCount }))}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="averageMarks" fill="#06b6d4" name="Average Marks" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard
+              title="Subject Performance"
+              description="Average performance by subject"
+            >
+              {subjectPerformance.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No subject performance data available.</p>
+              ) : (
+                <div className="h-72">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={subjectPerformance}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="subjectName" tick={{ fontSize: 11 }} />
+                      <YAxis tick={{ fontSize: 11 }} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="averageMarks" fill="#8b5cf6" name="Average Marks" radius={[4, 4, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </SectionCard>
+          </div>
+
+          <SectionCard
+            title="Student Distribution Across Assigned Classes"
+            description="Enrollment breakdown"
+          >
+            {studentDistribution.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No distribution data available.</p>
+            ) : (
+              <div className="h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={studentDistribution}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      outerRadius={110}
+                      dataKey="count"
+                      nameKey="name"
+                    >
+                      {studentDistribution.map((_entry, index) => (
+                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      ))}
+                    </Pie>
+                    <Tooltip />
+                    <Legend />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title="My Assigned Classes & Subjects"
+            description="Overview of your teaching assignments"
+          >
             {dashboard.assignments.length === 0 ? (
               <p className="text-sm text-muted-foreground">You do not have any active class or subject assignments.</p>
             ) : (
               <ul className="grid gap-3 sm:grid-cols-2">
                 {dashboard.assignments.map((assignment) => (
-                  <li key={assignment.id} className="rounded-md border p-4">
+                  <li key={assignment.id} className="rounded-lg border p-4">
                     <p className="font-semibold">
                       {assignment.className}{assignment.streamName ? ` · ${assignment.streamName}` : ''}
                     </p>
@@ -381,13 +590,12 @@ export function TeacherDashboardPage() {
                 ))}
               </ul>
             )}
-          </Card>
+          </SectionCard>
 
-          <Card className="space-y-3 p-6">
-            <h2 className="text-lg font-semibold">Today's timetable</h2>
-            <p className="text-xs text-muted-foreground">
-              {formatDate(dashboard.today)} · {dashboard.timeZone}
-            </p>
+          <SectionCard
+            title="Today's Timetable"
+            description={formatDate(dashboard.today) + ' · ' + dashboard.timeZone}
+          >
             {dashboard.timetable.length === 0 ? (
               <p className="text-sm text-muted-foreground">No lessons are scheduled for today.</p>
             ) : (
@@ -403,20 +611,19 @@ export function TeacherDashboardPage() {
                 ))}
               </ul>
             )}
-          </Card>
+          </SectionCard>
 
-          <Card className="space-y-4 p-6">
-            <div>
-              <h2 className="text-lg font-semibold">Attendance tasks</h2>
-              <p className="text-sm text-muted-foreground">Record attendance for students in your assigned classes.</p>
-            </div>
+          <SectionCard
+            title="Attendance Tasks"
+            description="Record attendance for students in your assigned classes."
+          >
             {dashboard.assignments.length === 0 ? (
               <p className="text-sm text-muted-foreground">No assigned classes are available for attendance.</p>
             ) : (
               <div className="flex flex-wrap gap-3">
                 <select
                   aria-label="Assigned class and subject"
-                  className="min-w-64 rounded-md border bg-background px-3 py-2 text-sm"
+                  className="input min-w-64"
                   value={selectedAssignmentId}
                   onChange={(event) => {
                     setSelectedAssignmentId(event.target.value);
@@ -433,7 +640,7 @@ export function TeacherDashboardPage() {
                 {selectedAssignmentId && (
                   <input
                     aria-label="Attendance date"
-                    className="rounded-md border bg-background px-3 py-2 text-sm"
+                    className="input"
                     type="date"
                     value={attendanceDate || dashboard.today}
                     onChange={(event) => setAttendanceDate(event.target.value)}
@@ -448,10 +655,12 @@ export function TeacherDashboardPage() {
                 date={attendanceDate || dashboard.today}
               />
             )}
-          </Card>
+          </SectionCard>
 
-          <Card className="space-y-3 p-6">
-            <h2 className="text-lg font-semibold">Upcoming examinations</h2>
+          <SectionCard
+            title="Upcoming Examinations"
+            description="Examinations for your assigned classes and subjects"
+          >
             {dashboard.upcomingExaminations.length === 0 ? (
               <p className="text-sm text-muted-foreground">There are no upcoming examinations for your assigned classes and subjects.</p>
             ) : (
@@ -484,7 +693,7 @@ export function TeacherDashboardPage() {
                 ))}
               </ul>
             )}
-          </Card>
+          </SectionCard>
         </>
       )}
     </main>

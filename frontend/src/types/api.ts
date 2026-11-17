@@ -346,3 +346,44 @@ export interface UpdateUserRequest {
   roles?: string[];
   isActive?: boolean;
 }
+
+export interface TeacherProfileResponse {
+  id: number;
+  uuid: string | null;
+  userId: number;
+  schoolId: number;
+  schoolName: string | null;
+  schoolCode: string | null;
+  role: string;
+  employeeNumber: string | null;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
+  phone: string | null;
+  gender: string | null;
+  dateOfBirth: string | null;
+  employmentStatus: string | null;
+  isActive: boolean;
+  lastLogin: string | null;
+  qualification: string | null;
+  experienceYears: number | null;
+  photoUrl: string | null;
+  createdAt: string | null;
+  updatedAt: string | null;
+}
+
+export interface UpdateTeacherProfileRequest {
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  gender?: string | null;
+  dateOfBirth?: string | null;
+  photoUrl?: string | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}

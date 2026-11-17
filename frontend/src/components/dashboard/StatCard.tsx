@@ -20,6 +20,14 @@ const toneClasses: Record<StatTone, string> = {
   info: 'text-primary',
 };
 
+const toneBgClasses: Record<StatTone, string> = {
+  default: 'bg-primary/10',
+  success: 'bg-emerald-500/10',
+  warning: 'bg-amber-500/10',
+  destructive: 'bg-destructive/10',
+  info: 'bg-primary/10',
+};
+
 export function StatCard({
   label,
   value,
@@ -28,21 +36,17 @@ export function StatCard({
   tone = 'default',
 }: StatCardProps) {
   return (
-    <Card className="p-4">
+    <Card className="stat-card">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            {label}
-          </p>
-          <p className={cn('mt-2 text-2xl font-bold tabular-nums', toneClasses[tone])}>
+          <p className="stat-card-label">{label}</p>
+          <p className={cn('mt-1 text-2xl font-bold tabular-nums', toneClasses[tone])}>
             {value}
           </p>
-          {hint ? (
-            <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>
-          ) : null}
+          {hint ? <p className="stat-card-hint">{hint}</p> : null}
         </div>
         {Icon ? (
-          <span className="rounded-lg bg-primary/10 p-2 text-primary">
+          <span className={cn('stat-card-icon', toneBgClasses[tone])}>
             <Icon className="h-5 w-5" aria-hidden="true" />
           </span>
         ) : null}

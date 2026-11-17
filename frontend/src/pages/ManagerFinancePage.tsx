@@ -166,7 +166,7 @@ export function ManagerFinancePage() {
             <div>
               <label className="block text-sm font-medium mb-1">Name</label>
               <Input {...register('name')} />
-              {errors.name && <p className="text-sm text-red-600 mt-1">{errors.name.message}</p>}
+              {errors.name && <p className="text-sm text-destructive mt-1">{errors.name.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Type</label>
@@ -177,7 +177,7 @@ export function ManagerFinancePage() {
                 ]}
                 {...register('categoryType')}
               />
-              {errors.categoryType && <p className="text-sm text-red-600 mt-1">{errors.categoryType.message}</p>}
+              {errors.categoryType && <p className="text-sm text-destructive mt-1">{errors.categoryType.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Description</label>

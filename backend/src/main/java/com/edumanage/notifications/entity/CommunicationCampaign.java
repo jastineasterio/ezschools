@@ -49,6 +49,9 @@ public class CommunicationCampaign extends BaseEntity {
     @Column(name = "failed_count", nullable = false)
     private int failedCount;
 
+    @Column(name = "delivered_count", nullable = false)
+    private int deliveredCount;
+
     @Column(name = "status", nullable = false, length = 20)
     private String status;
 }

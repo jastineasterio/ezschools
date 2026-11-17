@@ -13,6 +13,7 @@ import com.edumanage.subjects.repository.SubjectRepository;
 import com.edumanage.classes.repository.ClassRepository;
 import com.edumanage.streams.repository.StreamRepository;
 import com.edumanage.streamsubjects.repository.StreamSubjectAssignmentRepository;
+import com.edumanage.gradingschemes.service.GradingSchemeService;
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
@@ -21,6 +22,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,6 +36,7 @@ public class ExaminationSubjectService {
     private final StreamRepository streamRepository;
     private final AuditLogService auditLogService;
     private final StreamSubjectAssignmentRepository streamSubjectAssignmentRepository;
+    private final GradingSchemeService gradingSchemeService;
 
     public ExaminationSubjectService(ExaminationSubjectRepository examinationSubjectRepository,
                                      ExaminationRepository examinationRepository,
@@ -41,7 +44,8 @@ public class ExaminationSubjectService {
                                      ClassRepository classRepository,
                                      StreamRepository streamRepository,
                                      AuditLogService auditLogService,
-                                     StreamSubjectAssignmentRepository streamSubjectAssignmentRepository) {
+                                     StreamSubjectAssignmentRepository streamSubjectAssignmentRepository,
+                                     GradingSchemeService gradingSchemeService) {
         this.examinationSubjectRepository = examinationSubjectRepository;
         this.examinationRepository = examinationRepository;
         this.subjectRepository = subjectRepository;
@@ -49,6 +53,7 @@ public class ExaminationSubjectService {
         this.streamRepository = streamRepository;
         this.auditLogService = auditLogService;
         this.streamSubjectAssignmentRepository = streamSubjectAssignmentRepository;
+        this.gradingSchemeService = gradingSchemeService;
     }
 
     public PageResponse<ExaminationSubjectDto> listByExamination(Long examinationId, Pageable pageable) {
@@ -132,6 +137,12 @@ public class ExaminationSubjectService {
         examinationSubject.setPassMark(new java.math.BigDecimal(request.getPassMark()));
         examinationSubject.setGradingSchemeId(request.getGradingSchemeId());
 
+        if (request.getGradingSchemeId() != null) {
+            gradingSchemeService.validateRangesAgainstMaximumMarks(
+                    request.getGradingSchemeId(),
+                    new java.math.BigDecimal(request.getMaximumMarks()));
+        }
+
         examinationSubjectRepository.save(examinationSubject);
 
         auditLogService.log("EXAMINATION_SUBJECT_CREATE", "ExaminationSubject", examinationSubject.getId(),
@@ -191,6 +202,12 @@ public class ExaminationSubjectService {
         examinationSubject.setMaximumMarks(new java.math.BigDecimal(request.getMaximumMarks()));
         examinationSubject.setPassMark(new java.math.BigDecimal(request.getPassMark()));
         examinationSubject.setGradingSchemeId(request.getGradingSchemeId());
+
+        if (request.getGradingSchemeId() != null) {
+            gradingSchemeService.validateRangesAgainstMaximumMarks(
+                    request.getGradingSchemeId(),
+                    new java.math.BigDecimal(request.getMaximumMarks()));
+        }
 
         examinationSubjectRepository.save(examinationSubject);
 

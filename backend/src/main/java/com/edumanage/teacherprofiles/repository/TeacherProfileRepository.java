@@ -13,6 +13,7 @@ import org.springframework.stereotype.Repository;
 public interface TeacherProfileRepository extends JpaRepository<TeacherProfile, Long> {
     Optional<TeacherProfile> findByUserId(Long userId);
     Optional<TeacherProfile> findBySchoolIdAndUserId(Long schoolId, Long userId);
+    Optional<TeacherProfile> findBySchoolIdAndId(Long schoolId, Long id);
     Page<TeacherProfile> findBySchoolId(Long schoolId, Pageable pageable);
     Page<TeacherProfile> findBySchoolIdAndDeletedAtIsNull(Long schoolId, Pageable pageable);
     long countBySchoolIdAndDeletedAtIsNull(Long schoolId);

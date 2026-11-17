@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { cva } from 'class-variance-authority';
+import * as React from 'react';
 
 const tableVariants = cva('w-full caption-bottom text-sm');
 
@@ -18,13 +19,13 @@ export function TableBody({ className, ...props }: React.HTMLAttributes<HTMLTabl
 }
 
 export function TableRow({ className, ...props }: React.HTMLAttributes<HTMLTableRowElement>) {
-  return <tr className={cn('border-b transition-colors hover:bg-accent', className)} {...props} />;
+  return <tr className={cn('border-b transition-colors hover:bg-table-hover/50', className)} {...props} />;
 }
 
 export function TableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTableCellElement>) {
   return (
     <th
-      className={cn('h-12 px-4 text-left align-middle font-medium text-muted-foreground', className)}
+      className={cn('h-12 px-4 text-left align-middle font-medium text-xs uppercase tracking-wider text-muted-foreground bg-table-header', className)}
       {...props}
     />
   );
@@ -32,4 +33,8 @@ export function TableHead({ className, ...props }: React.ThHTMLAttributes<HTMLTa
 
 export function TableCell({ className, ...props }: React.TdHTMLAttributes<HTMLTableCellElement>) {
   return <td className={cn('p-4 align-middle', className)} {...props} />;
+}
+
+export function TableCaption({ className, ...props }: React.HTMLAttributes<HTMLTableCaptionElement>) {
+  return <caption className={cn('mt-4 text-sm text-muted-foreground', className)} {...props} />;
 }

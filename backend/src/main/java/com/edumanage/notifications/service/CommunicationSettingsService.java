@@ -6,6 +6,7 @@ import com.edumanage.notifications.dto.ManagerChannelPermissionDto;
 import com.edumanage.notifications.dto.NotificationChannelsDto;
 import com.edumanage.notifications.entity.ManagerChannelPermission;
 import com.edumanage.notifications.repository.ManagerChannelPermissionRepository;
+import com.edumanage.sms.service.SmsConfigurationService;
 import com.edumanage.users.entity.User;
 import com.edumanage.users.repository.UserRepository;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -22,6 +23,7 @@ public class CommunicationSettingsService {
     private final UserRepository userRepository;
     private final DarsmsProviderService darsmsProvider;
     private final EmailNotificationProviderService emailProvider;
+    private final SmsConfigurationService smsConfigurationService;
     private final AuditLogService auditLogService;
 
     public CommunicationSettingsService(JdbcTemplate jdbcTemplate,
@@ -29,12 +31,14 @@ public class CommunicationSettingsService {
                                         UserRepository userRepository,
                                         DarsmsProviderService darsmsProvider,
                                         EmailNotificationProviderService emailProvider,
+                                        SmsConfigurationService smsConfigurationService,
                                         AuditLogService auditLogService) {
         this.jdbcTemplate = jdbcTemplate;
         this.permissionRepository = permissionRepository;
         this.userRepository = userRepository;
         this.darsmsProvider = darsmsProvider;
         this.emailProvider = emailProvider;
+        this.smsConfigurationService = smsConfigurationService;
         this.auditLogService = auditLogService;
     }
 
@@ -46,8 +50,23 @@ public class CommunicationSettingsService {
                 email, emailProvider.isConfigured());
     }
 
+    /**
+     * Returns notification channel settings for a specific school. SMS configuration
+     * status is resolved from that school's own active DARSMS configuration rather
+     * than global application properties, so each school's SMS provider state is
+     * reported independently in a multi-school system.
+     */
+    public NotificationChannelsDto getSchoolSettings(Long schoolId) {
+        boolean global = settingEnabled("notifications.global.enabled", true);
+        boolean sms = settingEnabled("sms.enabled", true);
+        boolean email = settingEnabled("email.enabled", true);
+        boolean smsConfigured = smsConfigurationService.isConfigured(schoolId);
+        return new NotificationChannelsDto(global, sms, smsConfigured,
+                email, emailProvider.isConfigured());
+    }
+
     public boolean isChannelAllowed(Long managerUserId, Long schoolId, String channel) {
-        NotificationChannelsDto settings = getGlobalSettings();
+        NotificationChannelsDto settings = getSchoolSettings(schoolId);
         if (!settings.notificationsEnabled()) {
             return false;
         }
@@ -70,7 +89,7 @@ public class CommunicationSettingsService {
     }
 
     public String disabledReason(Long managerUserId, Long schoolId, String channel) {
-        NotificationChannelsDto settings = getGlobalSettings();
+        NotificationChannelsDto settings = getSchoolSettings(schoolId);
         if (!settings.notificationsEnabled()) {
             return "Notifications are disabled globally";
         }

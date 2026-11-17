@@ -7,6 +7,8 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Table(name = "sms_configurations")
 @Getter
@@ -22,7 +24,7 @@ public class SmsConfiguration extends UuidBaseEntity {
     @Column(name = "encrypted_api_key", nullable = false, columnDefinition = "TEXT")
     private String encryptedApiKey;
 
-    @Column(name = "encrypted_api_secret", nullable = false, columnDefinition = "TEXT")
+    @Column(name = "encrypted_api_secret", columnDefinition = "TEXT")
     private String encryptedApiSecret;
 
     @Column(name = "sender_id", length = 30)
@@ -39,4 +41,7 @@ public class SmsConfiguration extends UuidBaseEntity {
 
     @Column(name = "is_active", nullable = false)
     private boolean isActive = true;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 }

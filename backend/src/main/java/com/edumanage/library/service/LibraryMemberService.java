@@ -1,6 +1,6 @@
 package com.edumanage.library.service;
 
-import com.edumanage.exception.ForbiddenException;
+import com.edumanage.exception.ConflictException;
 import com.edumanage.exception.ResourceNotFoundException;
 import com.edumanage.library.dto.CreateLibraryMemberRequest;
 import com.edumanage.library.dto.LibraryMemberDto;
@@ -11,6 +11,9 @@ import com.edumanage.security.AccessGuard;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
 import com.edumanage.library.util.LibraryFeatureGuard;
+import com.edumanage.studentprofiles.repository.StudentProfileRepository;
+import com.edumanage.teacherprofiles.repository.TeacherProfileRepository;
+import com.edumanage.users.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -24,11 +27,22 @@ public class LibraryMemberService {
     private final LibraryMemberRepository libraryMemberRepository;
     private final AuditLogService auditLogService;
     private final AccessGuard accessGuard;
+    private final StudentProfileRepository studentProfileRepository;
+    private final TeacherProfileRepository teacherProfileRepository;
+    private final UserRepository userRepository;
 
-    public LibraryMemberService(LibraryMemberRepository libraryMemberRepository, AuditLogService auditLogService, AccessGuard accessGuard) {
+    public LibraryMemberService(LibraryMemberRepository libraryMemberRepository, 
+                                AuditLogService auditLogService, 
+                                AccessGuard accessGuard,
+                                StudentProfileRepository studentProfileRepository,
+                                TeacherProfileRepository teacherProfileRepository,
+                                UserRepository userRepository) {
         this.libraryMemberRepository = libraryMemberRepository;
         this.auditLogService = auditLogService;
         this.accessGuard = accessGuard;
+        this.studentProfileRepository = studentProfileRepository;
+        this.teacherProfileRepository = teacherProfileRepository;
+        this.userRepository = userRepository;
     }
 
     public PageResponse<LibraryMemberDto> list(Pageable pageable) {
@@ -124,6 +138,34 @@ public class LibraryMemberService {
                 "Deleted library member: " + member.getMembershipNumber(), null, null, null);
     }
 
+    private String resolveMemberName(LibraryMember entity) {
+        try {
+            if ("STUDENT".equalsIgnoreCase(entity.getMemberType())) {
+                var sp = studentProfileRepository.findById(entity.getMemberId());
+                if (sp.isPresent()) {
+                    var p = sp.get();
+                    String full = ((p.getFirstName() != null ? p.getFirstName() : "") + " " + (p.getMiddleName() != null ? p.getMiddleName() + " " : "") + (p.getLastName() != null ? p.getLastName() : "")).replaceAll("\\s+", " ").trim();
+                    if (!full.isEmpty()) return full;
+                }
+            } else if ("TEACHER".equalsIgnoreCase(entity.getMemberType())) {
+                var tp = teacherProfileRepository.findById(entity.getMemberId());
+                if (tp.isPresent()) {
+                    var p = tp.get();
+                    if (p.getUserId() != null) {
+                        var u = userRepository.findById(p.getUserId());
+                        if (u.isPresent()) {
+                            var user = u.get();
+                            String name = ((user.getFirstName() != null ? user.getFirstName() : "") + " " + (user.getLastName() != null ? user.getLastName() : "")).trim();
+                            if (!name.isEmpty()) return name;
+                        }
+                    }
+                    return p.getEmployeeNumber() != null ? p.getEmployeeNumber() : String.valueOf(entity.getMemberId());
+                }
+            }
+        } catch (Exception ignored) {
+        }
+        return entity.getMembershipNumber();
+    }
     private LibraryMemberDto mapToDto(LibraryMember entity) {
         LibraryMemberDto dto = new LibraryMemberDto();
         dto.setId(entity.getId());
@@ -131,6 +173,7 @@ public class LibraryMemberService {
         dto.setSchoolId(entity.getSchoolId());
         dto.setMemberType(entity.getMemberType());
         dto.setMemberId(entity.getMemberId());
+        dto.setMemberName(resolveMemberName(entity));
         dto.setMembershipNumber(entity.getMembershipNumber());
         dto.setJoinedDate(entity.getJoinedDate());
         dto.setMembershipExpiry(entity.getMembershipExpiry());
@@ -138,5 +181,6 @@ public class LibraryMemberService {
         dto.setCreatedAt(entity.getCreatedAt());
         dto.setUpdatedAt(entity.getUpdatedAt());
         return dto;
-    }
 }
+}
+

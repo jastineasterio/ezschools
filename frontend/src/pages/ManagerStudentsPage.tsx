@@ -27,6 +27,7 @@ import { Loader2 } from 'lucide-react';
 
 const studentSchema = z.object({
   userId: z.number(),
+  admissionNumber: z.string().min(1, 'Admission number is required'),
   firstName: z.string().min(1, 'First name is required'),
 
   middleName: z.string().optional(),

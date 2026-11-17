@@ -131,7 +131,7 @@ export function PlatformUsersPage() {
   return (
     <div className="space-y-6">
       {success && (
-        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="rounded-lg border border-green-200/50 bg-green-50/50 px-4 py-3 text-sm text-green-900 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400">
           {success}
         </div>
       )}
@@ -180,12 +180,12 @@ export function PlatformUsersPage() {
           <DialogClose onClick={() => setOpen(false)} />
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="rounded-lg border border-red-200/50 bg-red-50/50 px-4 py-3 text-sm text-red-900 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 {error}
               </div>
             )}
             {schoolsError && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="rounded-lg border border-red-200/50 bg-red-50/50 px-4 py-3 text-sm text-red-900 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
                 Failed to load schools.{' '}
                 <Button type="button" variant="outline" size="sm" onClick={() => refetchSchools()}>
                   Retry
@@ -195,7 +195,7 @@ export function PlatformUsersPage() {
             <div className="flex-1 overflow-y-auto pr-1 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">First Name <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium">First Name <span className="text-destructive">*</span></label>
                   <Input
                     required
                     value={formData.firstName}
@@ -203,7 +203,7 @@ export function PlatformUsersPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Last Name <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium">Last Name <span className="text-destructive">*</span></label>
                   <Input
                     required
                     value={formData.lastName}
@@ -211,7 +211,7 @@ export function PlatformUsersPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Email Address <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium">Email Address <span className="text-destructive">*</span></label>
                   <Input
                     type="email"
                     required
@@ -220,7 +220,7 @@ export function PlatformUsersPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Initial Password <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium">Initial Password <span className="text-destructive">*</span></label>
                   <Input
                     type="password"
                     required
@@ -236,7 +236,7 @@ export function PlatformUsersPage() {
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-sm font-medium">Assign School <span className="text-red-500">*</span></label>
+                  <label className="text-sm font-medium">Assign School <span className="text-destructive">*</span></label>
                   <Select
                     required
                     options={schoolOptions}

@@ -163,7 +163,7 @@ export function ManagerPaymentsPage() {
                 options={studentOptions.map((s) => ({ value: String(s.id), label: `${s.firstName} ${s.lastName} (${s.admissionNumber})` }))}
                 {...register('studentId')}
               />
-              {errors.studentId && <p className="text-sm text-red-600 mt-1">{errors.studentId.message}</p>}
+              {errors.studentId && <p className="text-sm text-destructive mt-1">{errors.studentId.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Fee Assignment</label>
@@ -175,17 +175,17 @@ export function ManagerPaymentsPage() {
             <div>
               <label className="block text-sm font-medium mb-1">Amount</label>
               <Input type="number" step="0.01" {...register('amount')} />
-              {errors.amount && <p className="text-sm text-red-600 mt-1">{errors.amount.message}</p>}
+              {errors.amount && <p className="text-sm text-destructive mt-1">{errors.amount.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Payment Method</label>
               <Input {...register('paymentMethod')} />
-              {errors.paymentMethod && <p className="text-sm text-red-600 mt-1">{errors.paymentMethod.message}</p>}
+              {errors.paymentMethod && <p className="text-sm text-destructive mt-1">{errors.paymentMethod.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Payment Date</label>
               <Input type="date" {...register('paymentDate')} />
-              {errors.paymentDate && <p className="text-sm text-red-600 mt-1">{errors.paymentDate.message}</p>}
+              {errors.paymentDate && <p className="text-sm text-destructive mt-1">{errors.paymentDate.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Receipt Number</label>

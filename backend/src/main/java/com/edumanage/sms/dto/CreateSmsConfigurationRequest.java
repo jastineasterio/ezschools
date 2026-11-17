@@ -3,6 +3,7 @@ package com.edumanage.sms.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -21,7 +22,7 @@ public class CreateSmsConfigurationRequest {
     @NotBlank(message = "API key is required")
     private String apiKey;
 
-    @NotBlank(message = "API secret is required")
+    @Size(max = 200)
     private String apiSecret;
 
     @Size(max = 30)
@@ -33,5 +34,6 @@ public class CreateSmsConfigurationRequest {
 
     private String remarks;
 
+    @JsonProperty("isActive")
     private boolean isActive = true;
 }

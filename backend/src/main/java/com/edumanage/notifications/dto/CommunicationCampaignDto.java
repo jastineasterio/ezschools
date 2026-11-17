@@ -12,8 +12,9 @@ public record CommunicationCampaignDto(
         String recipientGroup,
         int intendedCount,
         int excludedCount,
-        int acceptedCount,
+        int sentCount,
         int failedCount,
+        int deliveredCount,
         String status,
         LocalDateTime createdAt
 ) {

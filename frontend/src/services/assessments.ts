@@ -48,6 +48,7 @@ export interface ExaminationType {
   name: string;
   code: string | null;
   description: string | null;
+  active: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -56,12 +57,14 @@ export interface CreateExaminationTypeRequest {
   name: string;
   code?: string;
   description?: string;
+  active?: boolean;
 }
 
 export interface UpdateExaminationTypeRequest {
   name: string;
   code?: string;
   description?: string;
+  active?: boolean;
 }
 
 export interface Examination {
@@ -134,6 +137,7 @@ export interface GradingScheme {
   description: string | null;
   isDefault: boolean;
   status: string;
+  ranges?: GradingSchemeRange[];
   createdAt: string;
   updatedAt: string;
 }
@@ -252,10 +256,12 @@ export async function updateAttendance(id: number, data: UpdateAttendanceRequest
   return response.data;
 }
 
-export async function getExaminationTypes(page?: number, size?: number) {
-  const params: Record<string, number> = {};
+export async function getExaminationTypes(page?: number, size?: number, search?: string, active?: boolean) {
+  const params: Record<string, number | string | boolean> = {};
   if (page !== undefined) params.page = page;
   if (size !== undefined) params.size = size;
+  if (search !== undefined) params.search = search;
+  if (active !== undefined) params.active = active;
   const { data } = await api.get<PaginatedResponse<ExaminationType>>('/school/examination-types', { params });
   return data;
 }
@@ -273,6 +279,17 @@ export async function createExaminationType(data: CreateExaminationTypeRequest) 
 export async function updateExaminationType(id: number, data: UpdateExaminationTypeRequest) {
   const response = await api.put<ExaminationType>(`/school/examination-types/${id}`, data);
   return response.data;
+}
+
+export async function setExaminationTypeStatus(id: number, active: boolean) {
+  const { data } = await api.patch<ExaminationType>(`/school/examination-types/${id}/status`, undefined, {
+    params: { active },
+  });
+  return data;
+}
+
+export async function deleteExaminationType(id: number) {
+  await api.delete(`/school/examination-types/${id}`);
 }
 
 export async function getExaminations(page?: number, size?: number) {
@@ -358,11 +375,22 @@ export async function addGradingSchemeRange(schemeId: number, data: AddGradingSc
   return response.data;
 }
 
-export async function getResults(page?: number, size?: number) {
-  const params: Record<string, number> = {};
-  if (page !== undefined) params.page = page;
-  if (size !== undefined) params.size = size;
-  const { data } = await api.get<PaginatedResponse<Result>>('/school/results', { params });
+export async function getResults(params?: {
+  page?: number;
+  size?: number;
+  examinationId?: number;
+  classId?: number;
+  streamId?: number;
+  subjectId?: number;
+}) {
+  const queryParams: Record<string, number> = {};
+  if (params?.page !== undefined) queryParams.page = params.page;
+  if (params?.size !== undefined) queryParams.size = params.size;
+  if (params?.examinationId !== undefined) queryParams.examinationId = params.examinationId;
+  if (params?.classId !== undefined) queryParams.classId = params.classId;
+  if (params?.streamId !== undefined) queryParams.streamId = params.streamId;
+  if (params?.subjectId !== undefined) queryParams.subjectId = params.subjectId;
+  const { data } = await api.get<PaginatedResponse<Result>>('/school/results', { params: queryParams });
   return data;
 }
 
@@ -452,5 +480,103 @@ export async function generateExaminationReport(studentId: number, examinationId
   const { data } = await api.post<ExaminationReport>('/school/examination-reports/generate', null, {
     params: { studentId, examinationId },
   });
+  return data;
+}
+
+export interface UpdateGradingSchemeRangeRequest {
+  grade: string;
+  minMark: number;
+  maxMark: number;
+  gradePoint?: number;
+  remark?: string;
+}
+
+export interface ResultSubmission {
+  studentId: number;
+  marksObtained?: number | null;
+  remarks?: string;
+}
+
+export interface ResultAnalytics {
+  overallAverage: number | null;
+  totalStudentsAssessed: number;
+  passRate: number;
+  failRate: number;
+  highestScore: number | null;
+  lowestScore: number | null;
+  totalExaminations: number;
+  submittedResults: number;
+  approvedResults: number;
+  publishedResults: number;
+  totalResults: number;
+  passedResults: number;
+  failedResults: number;
+  draftResults: number;
+  gradeDistribution: { grade: string; count: number; percentage: number }[];
+  classPerformance: { classId: number; className: string; average: number | null; studentCount: number; passRate: number; highestScore: number | null; lowestScore: number | null }[];
+  streamPerformance: { streamId: number; streamName: string; className: string; average: number | null; studentCount: number; passRate: number }[];
+  subjectPerformance: { subjectId: number; subjectName: string; average: number | null; studentCount: number; passRate: number; highestScore: number | null; lowestScore: number | null }[];
+  topStudents: { studentId: number; studentName: string; admissionNumber: string; average: number | null; grade: string | null; assessmentCount: number }[];
+  studentsNeedingSupport: { studentId: number; studentName: string; admissionNumber: string; average: number | null; grade: string | null; assessmentCount: number; needsSupport: boolean }[];
+  performanceTrends: { examinationId: number; examinationName: string; average: number | null; studentCount: number; passRate: number }[];
+}
+
+export async function updateGradingSchemeRange(schemeId: number, rangeId: number, data: UpdateGradingSchemeRangeRequest) {
+  const { data: result } = await api.put<GradingSchemeRange>(`/school/grading-schemes/${schemeId}/ranges/${rangeId}`, data);
+  return result;
+}
+
+export async function deleteGradingSchemeRange(schemeId: number, rangeId: number) {
+  await api.delete(`/school/grading-schemes/${schemeId}/ranges/${rangeId}`);
+}
+
+export async function toggleGradingSchemeStatus(schemeId: number, status: string) {
+  const { data } = await api.patch<GradingScheme>(`/school/grading-schemes/${schemeId}/status`, undefined, {
+    params: { status },
+  });
+  return data;
+}
+
+export async function deleteGradingScheme(schemeId: number) {
+  await api.delete(`/school/grading-schemes/${schemeId}`);
+}
+
+export async function recordExamResults(examinationSubjectId: number, submissions: ResultSubmission[]) {
+  const { data } = await api.post<Result[]>(`/school/teacher-workspace/examination-subjects/${examinationSubjectId}/results`, submissions);
+  return data;
+}
+
+export async function submitAllExamResults(examinationSubjectId: number) {
+  const { data } = await api.post<Result[]>(`/school/teacher-workspace/examination-subjects/${examinationSubjectId}/submit`);
+  return data;
+}
+
+export async function reopenResult(id: number) {
+  const { data } = await api.post<Result>(`/school/results/${id}/reopen`);
+  return data;
+}
+
+export async function getResultsAnalytics(params?: {
+  academicYearId?: number;
+  examinationId?: number;
+  classId?: number;
+  streamId?: number;
+  subjectId?: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { data } = await api.get<ResultAnalytics>('/school/results/analytics', { params });
+  return data;
+}
+
+export async function getDepartmentResultsAnalytics(params?: {
+  academicYearId?: number;
+  examinationId?: number;
+  classId?: number;
+  streamId?: number;
+  startDate?: string;
+  endDate?: string;
+}) {
+  const { data } = await api.get<ResultAnalytics>('/school/results/analytics/department', { params });
   return data;
 }

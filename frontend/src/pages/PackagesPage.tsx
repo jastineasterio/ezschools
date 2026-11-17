@@ -89,14 +89,14 @@ export function PackagesPage() {
   return (
     <div className="space-y-6">
       {success && (
-        <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div className="rounded-xl border border-emerald-200/50 bg-emerald-50/50 p-4 text-sm text-emerald-700 dark:border-emerald-900/30 dark:bg-emerald-900/20 dark:text-emerald-400">
           {success}
         </div>
       )}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Packages</h1>
-          <p className="mt-1 text-muted-foreground">Manage subscription packages</p>
+          <h1 className="text-2xl font-bold tracking-tight">Packages</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage subscription packages</p>
         </div>
         <Button onClick={() => setOpen(true)}>
           <Plus className="mr-2 h-4 w-4" /> Add Package
@@ -106,23 +106,23 @@ export function PackagesPage() {
       {isLoading ? (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {[...Array(3)].map((_, i) => (
-            <Card key={i} className="p-6"><Skeleton className="h-40" /></Card>
+            <Card key={i} className="p-5"><Skeleton className="h-48" /></Card>
           ))}
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {data?.length === 0 && (
-            <Card className="p-6 col-span-full">
-              <p className="text-center text-muted-foreground">No packages found.</p>
+            <Card className="p-5 col-span-full">
+              <p className="text-center text-sm text-muted-foreground">No packages found.</p>
             </Card>
           )}
           {data?.map((pkg: any) => (
-            <Card key={pkg.id} className="p-6">
+            <Card key={pkg.id} className="p-5">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="font-semibold">{pkg.displayName}</h3>
+                  <h3 className="font-semibold text-foreground">{pkg.displayName}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">{pkg.description}</p>
-                  <p className="mt-2 text-2xl font-bold">{formatTsh(pkg.price)}<span className="text-sm text-muted-foreground"> / {pkg.billingPeriod?.toLowerCase() || ''}</span></p>
+                  <p className="mt-2 text-2xl font-bold tabular-nums text-foreground">{formatTsh(pkg.price)}<span className="text-sm text-muted-foreground"> / {pkg.billingPeriod?.toLowerCase() || ''}</span></p>
                 </div>
                 <Badge variant={pkg.active ? 'success' : 'secondary'}>{pkg.active ? 'Active' : 'Inactive'}</Badge>
               </div>
@@ -141,37 +141,37 @@ export function PackagesPage() {
           <DialogClose onClick={() => setOpen(false)} />
           <form onSubmit={handleSubmit} className="flex flex-col h-full">
             {error && (
-              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+              <div className="rounded-xl border border-rose-200/50 bg-rose-50/50 p-4 text-sm text-rose-700 dark:border-rose-900/30 dark:bg-rose-900/20 dark:text-rose-400">
                 {error}
               </div>
             )}
-            <div className="flex-1 overflow-y-auto pr-1 space-y-4">
+            <div className="flex-1 overflow-y-auto pr-1 space-y-4 pt-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Name <span className="text-red-500">*</span></label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Name <span className="text-destructive">*</span></label>
                   <Input
                     required
                     value={formData.name}
                     onChange={e => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Display Name <span className="text-red-500">*</span></label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Display Name <span className="text-destructive">*</span></label>
                   <Input
                     required
                     value={formData.displayName}
                     onChange={e => setFormData({ ...formData, displayName: e.target.value })}
                   />
                 </div>
-                <div className="space-y-1 sm:col-span-2">
-                  <label className="text-sm font-medium">Description</label>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-sm font-medium text-foreground">Description</label>
                   <Input
                     value={formData.description || ''}
                     onChange={e => setFormData({ ...formData, description: e.target.value })}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Price <span className="text-red-500">*</span></label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Price <span className="text-destructive">*</span></label>
                   <Input
                     type="number"
                     required
@@ -179,16 +179,16 @@ export function PackagesPage() {
                     onChange={e => setFormData({ ...formData, price: parseFloat(e.target.value) || 0 })}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Billing Period <span className="text-red-500">*</span></label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Billing Period <span className="text-destructive">*</span></label>
                   <Input
                     required
                     value={formData.billingPeriod}
                     onChange={e => setFormData({ ...formData, billingPeriod: e.target.value })}
                   />
                 </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-medium">Sort Order</label>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Sort Order</label>
                   <Input
                     type="number"
                     value={formData.sortOrder}

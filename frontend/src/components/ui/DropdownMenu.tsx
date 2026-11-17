@@ -28,7 +28,7 @@ export function DropdownMenu({ trigger, children, align = 'right' }: DropdownMen
       {open && (
         <div
           className={cn(
-            'absolute z-50 mt-2 min-w-[8rem] rounded-md border border-border bg-popover text-popover-foreground shadow-md',
+            'absolute z-50 mt-2 min-w-[10rem] rounded-xl border border-border bg-card text-card-foreground shadow-xl',
             align === 'right' ? 'right-0' : 'left-0'
           )}
         >
@@ -54,7 +54,7 @@ export function DropdownMenuItem({
         onClick?.();
       }}
       className={cn(
-        'flex w-full items-center px-4 py-2 text-sm text-foreground hover:bg-muted',
+        'flex w-full cursor-pointer items-center px-3 py-2 text-sm text-foreground hover:bg-accent transition-colors',
         className
       )}
     >

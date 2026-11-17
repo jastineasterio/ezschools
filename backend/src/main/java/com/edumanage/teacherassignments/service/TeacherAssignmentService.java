@@ -20,12 +20,14 @@ import com.edumanage.streamsubjects.repository.StreamSubjectAssignmentRepository
 import com.edumanage.audit.service.AuditLogService;
 import com.edumanage.common.dto.PageResponse;
 import com.edumanage.tenant.TenantContext;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -101,10 +103,34 @@ public class TeacherAssignmentService {
     public TeacherAssignmentDto create(CreateTeacherAssignmentRequest request) {
         Long tenantId = TenantContext.requireTenantId();
         var refs = validateRequest(tenantId, request);
-        if (teacherAssignmentRepository.existsByTeacherIdAndSubjectIdAndClassIdAndStreamIdAndAcademicYearIdAndDeletedAtIsNull(
-                request.getTeacherId(), request.getSubjectId(), request.getClassId(), request.getStreamId(),
-                request.getAcademicYearId())) {
-            throw new ConflictException("Teacher assignment already exists");
+
+        Optional<TeacherAssignment> existing = findExisting(tenantId, request);
+        if (existing.isPresent()) {
+            TeacherAssignment assignment = existing.get();
+            if (!assignment.isDeleted()) {
+                throw new ConflictException(duplicateMessage(refs));
+            }
+            // A soft-deleted assignment with the exact same combination already exists.
+            // Reactivate it instead of inserting a duplicate record.
+            assignment.setDeletedAt(null);
+            assignment.setTeacherId(request.getTeacherId());
+            assignment.setSubjectId(request.getSubjectId());
+            assignment.setClassId(request.getClassId());
+            assignment.setStreamId(request.getStreamId());
+            assignment.setAcademicYearId(request.getAcademicYearId());
+            assignment.setClassTeacher(request.isClassTeacher());
+
+            try {
+                teacherAssignmentRepository.save(assignment);
+            } catch (DataIntegrityViolationException ex) {
+                throw new ConflictException(duplicateMessage(refs));
+            }
+
+            auditLogService.log("TEACHER_ASSIGNMENT_REACTIVATE", "TeacherAssignment", assignment.getId(),
+                    "Reactivated teacher assignment for teacher " + refs.teacher().getEmail(), null, null, null);
+
+            return mapToDto(assignment, refs.teacher().getFirstName() + " " + refs.teacher().getLastName(),
+                    refs.subject().getName(), refs.clazz().getName(), refs.streamName(), refs.academicYear().getName());
         }
 
         TeacherAssignment assignment = new TeacherAssignment();
@@ -116,13 +142,42 @@ public class TeacherAssignmentService {
         assignment.setAcademicYearId(request.getAcademicYearId());
         assignment.setClassTeacher(request.isClassTeacher());
 
-        teacherAssignmentRepository.save(assignment);
+        try {
+            teacherAssignmentRepository.save(assignment);
+        } catch (DataIntegrityViolationException ex) {
+            // A concurrent request inserted the same combination first. The unique constraint is the
+            // final protection; translate the violation into a controlled conflict response.
+            throw new ConflictException(duplicateMessage(refs));
+        }
 
         auditLogService.log("TEACHER_ASSIGNMENT_CREATE", "TeacherAssignment", assignment.getId(),
                 "Created teacher assignment for teacher " + refs.teacher().getEmail(), null, null, null);
 
         return mapToDto(assignment, refs.teacher().getFirstName() + " " + refs.teacher().getLastName(),
                 refs.subject().getName(), refs.clazz().getName(), refs.streamName(), refs.academicYear().getName());
+    }
+
+    private String duplicateMessage(AssignmentReferences refs) {
+        StringBuilder message = new StringBuilder("This teacher is already assigned to ");
+        message.append(refs.subject().getName());
+        message.append(" for ").append(refs.clazz().getName());
+        if (refs.streamName() != null) {
+            message.append(", stream ").append(refs.streamName());
+        }
+        message.append(" in ").append(refs.academicYear().getName());
+        message.append(".");
+        return message.toString();
+    }
+
+    private Optional<TeacherAssignment> findExisting(Long schoolId, CreateTeacherAssignmentRequest request) {
+        if (request.getStreamId() != null) {
+            return teacherAssignmentRepository.findByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdAndAcademicYearId(
+                    request.getTeacherId(), schoolId, request.getSubjectId(), request.getClassId(),
+                    request.getStreamId(), request.getAcademicYearId());
+        }
+        return teacherAssignmentRepository.findByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdIsNullAndAcademicYearId(
+                request.getTeacherId(), schoolId, request.getSubjectId(), request.getClassId(),
+                request.getAcademicYearId());
     }
 
     @Transactional

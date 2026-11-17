@@ -11,7 +11,8 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateExaminationSubjectRequest {
 
-    @NotNull(message = "Examination ID is required")
+    // examinationId is supplied via the @PathVariable and is not read from the
+    // request body, so it must not be a required body field.
     private Long examinationId;
 
     @NotNull(message = "Subject ID is required")

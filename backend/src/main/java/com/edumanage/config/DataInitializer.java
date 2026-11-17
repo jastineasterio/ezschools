@@ -63,6 +63,14 @@ public class DataInitializer {
             superAdmin.getRoles().add(superAdminRole);
             userRepository.save(superAdmin);
         }
+
+        // Ensure the Super Admin password matches the configured development
+        // credential. Re-encode only when there is a mismatch so the hash is
+        // not rewritten on every startup.
+        if (!passwordEncoder.matches("Admin@123", superAdmin.getPasswordHash())) {
+            superAdmin.setPasswordHash(passwordEncoder.encode("Admin@123"));
+            userRepository.save(superAdmin);
+        }
     }
 
     private Role getOrCreateRole(RoleRepository roleRepository,

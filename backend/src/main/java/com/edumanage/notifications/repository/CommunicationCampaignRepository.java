@@ -13,6 +13,8 @@ public interface CommunicationCampaignRepository extends JpaRepository<Communica
 
     Optional<CommunicationCampaign> findBySchoolIdAndId(Long schoolId, Long id);
 
+    Page<CommunicationCampaign> findBySchoolId(Long schoolId, Pageable pageable);
+
     Page<CommunicationCampaign> findBySchoolIdOrderByCreatedAtDesc(Long schoolId, Pageable pageable);
 
     Page<CommunicationCampaign> findAllByOrderByCreatedAtDesc(Pageable pageable);

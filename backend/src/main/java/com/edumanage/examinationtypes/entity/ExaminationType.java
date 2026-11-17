@@ -24,4 +24,8 @@ public class ExaminationType extends SoftDeletableEntity {
 
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
+
+    @Column(name = "active", nullable = false)
+    private Boolean active = true;
+
 }

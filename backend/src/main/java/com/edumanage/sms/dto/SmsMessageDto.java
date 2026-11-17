@@ -19,6 +19,7 @@ public class SmsMessageDto {
     private String status;
     private String providerResponse;
     private String providerMessageId;
+    private String batchId;
     private Integer retryCount;
     private LocalDateTime sentAt;
     private LocalDateTime deliveredAt;

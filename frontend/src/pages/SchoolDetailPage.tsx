@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
-import { ArrowLeft, Package, Users, Calendar, Mail, Phone, MapPin } from 'lucide-react';
+import { ArrowLeft, Package, Users, Calendar, Mail, Phone, MapPin, Palette } from 'lucide-react';
 
 export function SchoolDetailPage() {
   const { id } = useParams();
@@ -32,6 +32,11 @@ export function SchoolDetailPage() {
         <Link to="/platform/schools">
           <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
         </Link>
+        <Button
+          onClick={() => window.location.href = `/platform/schools/${school?.id}/branding`}
+        >
+          <Palette className="mr-2 h-4 w-4" /> Manage Branding
+        </Button>
         <div>
           <h1 className="text-3xl font-bold">{school?.name}</h1>
           <p className="mt-1 text-muted-foreground">School Details</p>

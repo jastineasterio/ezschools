@@ -105,7 +105,7 @@ export function ManagerSchoolPage() {
             {updateTimeZone.isPending ? 'Saving…' : 'Save time zone'}
           </Button>
           <p className="w-full text-xs text-muted-foreground">Use an IANA time zone, for example Africa/Accra or America/New_York.</p>
-          {updateTimeZone.isSuccess && <p role="status" className="w-full text-sm text-green-700">Time zone updated.</p>}
+          {updateTimeZone.isSuccess && <p role="status" className="w-full text-sm text-green-600 dark:text-green-400">Time zone updated.</p>}
           {updateTimeZone.isError && (
             <p role="alert" className="w-full text-sm text-destructive">
               {getApiErrorMessage(updateTimeZone.error, 'The time zone could not be saved.')}

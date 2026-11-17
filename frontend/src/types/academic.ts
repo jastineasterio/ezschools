@@ -457,6 +457,8 @@ export interface ResultResponse {
   subjectName: string;
   classId: number;
   className: string;
+  streamId: number | null;
+  streamName: string | null;
   teacherId: number;
   teacherName: string;
   marksObtained: number | null;

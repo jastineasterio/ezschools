@@ -79,6 +79,10 @@ public class ExaminationService {
             throw new ForbiddenException("Examination type does not belong to this school");
         }
 
+        if (type.getActive() != null && !type.getActive()) {
+            throw new ForbiddenException("Examination type is not active");
+        }
+
         Examination examination = new Examination();
         examination.setSchoolId(tenantId);
         examination.setAcademicYearId(request.getAcademicYearId());

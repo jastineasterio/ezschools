@@ -35,12 +35,33 @@ public class CommunicationDelivery extends BaseEntity {
     @Column(name = "provider_message_id", length = 255)
     private String providerMessageId;
 
+    @Column(name = "batch_id", length = 255)
+    private String batchId;
+
     @Column(name = "failure_code", length = 60)
     private String failureCode;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
+    @Column(name = "delivery_status", length = 20)
+    private String deliveryStatus;
 
     @Column(name = "attempt_count", nullable = false)
     private int attemptCount;
 
     @Column(name = "last_attempt_at")
     private LocalDateTime lastAttemptAt;
+
+    @Column(name = "sent_at")
+    private LocalDateTime sentAt;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "recipient_name", length = 255)
+    private String recipientName;
+
+    @Column(name = "recipient_phone", length = 50)
+    private String recipientPhone;
 }

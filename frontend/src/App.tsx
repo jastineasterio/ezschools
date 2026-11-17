@@ -1,7 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from '@/layouts/ProtectedRoute';
-import { PlatformLayout } from '@/layouts/PlatformLayout';
-import { SchoolLayout } from '@/layouts/SchoolLayout';
 import { LoginPage } from '@/pages/LoginPage';
 import { PlatformDashboardPage } from '@/pages/PlatformDashboardPage';
 import { SchoolsPage } from '@/pages/SchoolsPage';
@@ -19,8 +17,8 @@ import { PlatformAnalyticsPage } from '@/pages/PlatformAnalyticsPage';
 import { ManagerDashboardPage } from '@/pages/ManagerDashboardPage';
 import { ManagerSchoolPage } from '@/pages/ManagerSchoolPage';
 import { ManagerTimetablePage } from '@/pages/ManagerTimetablePage';
-import { ManagerBrandingPage } from '@/pages/ManagerBrandingPage';
 import { ManagerAcademicYearsPage } from '@/pages/ManagerAcademicYearsPage';
+import { PlatformBrandingPage } from '@/pages/PlatformBrandingPage';
 import { ManagerClassesPage } from '@/pages/ManagerClassesPage';
 import { ManagerStreamsPage } from '@/pages/ManagerStreamsPage';
 import { ManagerSubjectsPage } from '@/pages/ManagerSubjectsPage';
@@ -33,12 +31,15 @@ import { ManagerStreamSubjectsPage } from '@/pages/ManagerStreamSubjectsPage';
 import { ManagerParentsPage } from '@/pages/ManagerParentsPage';
 import { ManagerAttendancePage } from '@/pages/ManagerAttendancePage';
 import { ManagerExaminationsPage } from '@/pages/ManagerExaminationsPage';
+import { ManagerGradingSchemesPage } from '@/pages/ManagerGradingSchemesPage';
+import { ManagerExaminationTypesPage } from '@/pages/ManagerExaminationTypesPage';
 import { ManagerResultsPage } from '@/pages/ManagerResultsPage';
 import { ManagerFinancePage } from '@/pages/ManagerFinancePage';
 import { ManagerFeeStructuresPage } from '@/pages/ManagerFeeStructuresPage';
 import { ManagerFeeAssignmentsPage } from '@/pages/ManagerFeeAssignmentsPage';
 import { ManagerPaymentsPage } from '@/pages/ManagerPaymentsPage';
 import { ManagerSmsPage } from '@/pages/ManagerSmsPage';
+import { ManagerResultsNotificationsPage } from '@/pages/ManagerResultsNotificationsPage';
 import { ManagerLibraryPage } from '@/pages/ManagerLibraryPage';
 import { ManagerTransportPage } from '@/pages/ManagerTransportPage';
 import { ManagerNotificationsPage } from '@/pages/ManagerNotificationsPage';
@@ -48,6 +49,17 @@ import { ManagerUsersPage } from '@/pages/ManagerUsersPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 import { RoleDashboardPage } from '@/pages/RoleDashboardPage';
 import { TeacherDashboardPage } from '@/pages/TeacherDashboardPage';
+import { TeacherClassesPage } from '@/pages/TeacherClassesPage';
+import { TeacherSubjectsPage } from '@/pages/TeacherSubjectsPage';
+import { TeacherStudentsPage } from '@/pages/TeacherStudentsPage';
+import { TeacherAssignmentsPage } from '@/pages/TeacherAssignmentsPage';
+import { TeacherTimetablePage } from '@/pages/TeacherTimetablePage';
+import { TeacherAttendancePage } from '@/pages/TeacherAttendancePage';
+import { TeacherExaminationsPage } from '@/pages/TeacherExaminationsPage';
+import { TeacherResultsPage } from '@/pages/TeacherResultsPage';
+import { ManagerNotificationsPage as TeacherNotificationsPage } from '@/pages/ManagerNotificationsPage';
+import { TeacherAnnouncementsPage } from '@/pages/TeacherAnnouncementsPage';
+import { TeacherProfilePage } from '@/pages/TeacherProfilePage';
 import { StudentDashboardPage } from '@/pages/StudentDashboardPage';
 import { ManagerCertificatesPage } from '@/pages/ManagerCertificatesPage';
 import { StudentCertificatesPage } from '@/pages/StudentCertificatesPage';
@@ -58,7 +70,8 @@ import { LibrarianDashboardPage } from '@/pages/LibrarianDashboardPage';
 import { HodDashboardPage } from '@/pages/HodDashboardPage';
 import { WardenDashboardPage } from '@/pages/WardenDashboardPage';
 import { TransportOfficerDashboardPage } from '@/pages/TransportOfficerDashboardPage';
-import { StaffLayout } from '@/layouts/StaffLayout';
+import { AppShell } from '@/components/layout/AppShell';
+import { schoolConfig, staffConfig, platformConfig } from '@/components/layout/shellConfigs';
 import { useAuth } from '@/store/AuthContext';
 import { getDashboardPath } from '@/lib/roles';
 
@@ -81,10 +94,11 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['SUPER_ADMIN']} />}>
-        <Route path="/platform" element={<PlatformLayout />}>
+        <Route path="/platform" element={<AppShell config={platformConfig} />}>
           <Route path="dashboard" element={<PlatformDashboardPage />} />
           <Route path="schools" element={<SchoolsPage />} />
           <Route path="schools/:id" element={<SchoolDetailPage />} />
+          <Route path="schools/:id/branding" element={<PlatformBrandingPage />} />
           <Route path="schools/new" element={<SchoolFormPage />} />
           <Route path="schools/:id/edit" element={<SchoolFormPage />} />
           <Route path="packages" element={<PackagesPage />} />
@@ -101,11 +115,10 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['MANAGER']} />}>
-        <Route path="/school" element={<SchoolLayout />}>
+        <Route path="/school" element={<AppShell config={schoolConfig} />}>
           <Route path="dashboard" element={<ManagerDashboardPage />} />
           <Route path="users" element={<ManagerUsersPage />} />
           <Route path="profile" element={<ManagerSchoolPage />} />
-          <Route path="branding" element={<ManagerBrandingPage />} />
           <Route path="academic-years" element={<ManagerAcademicYearsPage />} />
           <Route path="classes" element={<ManagerClassesPage />} />
           <Route path="streams" element={<ManagerStreamsPage />} />
@@ -120,6 +133,8 @@ export function App() {
           <Route path="parents" element={<ManagerParentsPage />} />
           <Route path="attendance" element={<ManagerAttendancePage />} />
           <Route path="examinations" element={<ManagerExaminationsPage />} />
+          <Route path="grading-schemes" element={<ManagerGradingSchemesPage />} />
+          <Route path="examination-types" element={<ManagerExaminationTypesPage />} />
           <Route path="results" element={<ManagerResultsPage />} />
           <Route path="certificates" element={<ManagerCertificatesPage />} />
           <Route path="finance" element={<ManagerFinancePage />} />
@@ -127,6 +142,7 @@ export function App() {
           <Route path="fee-assignments" element={<ManagerFeeAssignmentsPage />} />
           <Route path="payments" element={<ManagerPaymentsPage />} />
           <Route path="sms" element={<ManagerSmsPage />} />
+          <Route path="results-notifications" element={<ManagerResultsNotificationsPage />} />
           <Route path="library" element={<ManagerLibraryPage />} />
           <Route path="transport" element={<ManagerTransportPage />} />
           <Route path="notifications" element={<ManagerNotificationsPage />} />
@@ -136,13 +152,24 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['TEACHER']} />}>
-        <Route path="/school/teacher" element={<StaffLayout role="TEACHER" />}>
+        <Route path="/school/teacher" element={<AppShell config={staffConfig('TEACHER')} />}>
           <Route path="dashboard" element={<TeacherDashboardPage />} />
+          <Route path="classes" element={<TeacherClassesPage />} />
+          <Route path="subjects" element={<TeacherSubjectsPage />} />
+          <Route path="students" element={<TeacherStudentsPage />} />
+          <Route path="assignments" element={<TeacherAssignmentsPage />} />
+          <Route path="timetable" element={<TeacherTimetablePage />} />
+          <Route path="attendance" element={<TeacherAttendancePage />} />
+          <Route path="examinations" element={<TeacherExaminationsPage />} />
+          <Route path="results" element={<TeacherResultsPage />} />
+          <Route path="notifications" element={<TeacherNotificationsPage />} />
+          <Route path="announcements" element={<TeacherAnnouncementsPage />} />
+          <Route path="profile" element={<TeacherProfilePage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute roles={['STUDENT']} />}>
-        <Route path="/school/student" element={<StaffLayout role="STUDENT" />}>
+        <Route path="/school/student" element={<AppShell config={staffConfig('STUDENT')} />}>
           <Route path="dashboard" element={<StudentDashboardPage />} />
           <Route path="certificates" element={<StudentCertificatesPage />} />
           <Route path="change-password" element={<ChangePasswordPage />} />
@@ -150,13 +177,13 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['PARENT']} />}>
-        <Route path="/school/parent" element={<StaffLayout role="PARENT" />}>
+        <Route path="/school/parent" element={<AppShell config={staffConfig('PARENT')} />}>
           <Route path="dashboard" element={<ParentDashboardPage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute roles={['ACCOUNTANT']} />}>
-        <Route path="/school/accountant" element={<StaffLayout role="ACCOUNTANT" />}>
+        <Route path="/school/accountant" element={<AppShell config={staffConfig('ACCOUNTANT')} />}>
           <Route path="dashboard" element={<AccountantDashboardPage />} />
           <Route path="payments" element={<ManagerPaymentsPage />} />
           <Route path="fee-assignments" element={<ManagerFeeAssignmentsPage />} />
@@ -166,14 +193,14 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['LIBRARIAN']} />}>
-        <Route path="/school/librarian" element={<StaffLayout role="LIBRARIAN" />}>
+        <Route path="/school/librarian" element={<AppShell config={staffConfig('LIBRARIAN')} />}>
           <Route path="dashboard" element={<LibrarianDashboardPage />} />
           <Route path="library" element={<ManagerLibraryPage />} />
         </Route>
       </Route>
 
       <Route element={<ProtectedRoute roles={['HOD']} />}>
-        <Route path="/school/hod" element={<StaffLayout role="HOD" />}>
+        <Route path="/school/hod" element={<AppShell config={staffConfig('HOD')} />}>
           <Route path="dashboard" element={<HodDashboardPage />} />
           <Route path="departments" element={<ManagerDepartmentsPage />} />
           <Route path="subjects" element={<ManagerSubjectsPage />} />
@@ -183,7 +210,7 @@ export function App() {
       </Route>
 
       <Route element={<ProtectedRoute roles={['WARDEN']} />}>
-        <Route path="/school/warden" element={<StaffLayout role="WARDEN" />}>
+        <Route path="/school/warden" element={<AppShell config={staffConfig('WARDEN')} />}>
           <Route path="dashboard" element={<WardenDashboardPage />} />
           <Route path="boarding" element={<ManagerBoardingPage />} />
         </Route>
@@ -192,7 +219,7 @@ export function App() {
       <Route element={<ProtectedRoute roles={['TRANSPORT_OFFICER']} />}>
         <Route
           path="/school/transport-officer"
-          element={<StaffLayout role="TRANSPORT_OFFICER" />}
+          element={<AppShell config={staffConfig('TRANSPORT_OFFICER')} />}
         >
           <Route path="dashboard" element={<TransportOfficerDashboardPage />} />
           <Route path="transport" element={<ManagerTransportPage />} />

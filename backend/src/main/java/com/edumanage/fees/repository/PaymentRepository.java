@@ -54,8 +54,14 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             + "AND p.status = 'COMPLETED' AND p.paymentDate >= :fromDate")
     BigDecimal sumCompletedAmountSince(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate);
 
+    @Query("SELECT SUM(p.amount) FROM Payment p WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.status = 'COMPLETED' AND p.paymentDate >= :fromDate AND p.paymentDate <= :toDate")
+    BigDecimal sumCompletedAmountBetween(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.paymentDate >= :fromDate")
     long countSince(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate);
+
+    @Query("SELECT COUNT(p) FROM Payment p WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.paymentDate >= :fromDate AND p.paymentDate <= :toDate")
+    long countBetween(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 
     @Query("SELECT COUNT(p) FROM Payment p WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.status <> 'COMPLETED'")
     long countUnverifiedBySchoolId(@Param("schoolId") Long schoolId);
@@ -71,8 +77,18 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             + "AND p.paymentDate >= :fromDate GROUP BY p.paymentDate ORDER BY p.paymentDate DESC")
     List<PaymentDateSummary> summariseByPaymentDate(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate);
 
+    @Query("SELECT p.paymentDate AS paymentDate, COUNT(p) AS total, SUM(p.amount) AS amount FROM Payment p "
+            + "WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.status = 'COMPLETED' "
+            + "AND p.paymentDate >= :fromDate AND p.paymentDate <= :toDate GROUP BY p.paymentDate ORDER BY p.paymentDate DESC")
+    List<PaymentDateSummary> summariseByPaymentDateBetween(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
+
     @Query("SELECT p.paymentMethod AS paymentMethod, COUNT(p) AS total, SUM(p.amount) AS amount FROM Payment p "
             + "WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.status = 'COMPLETED' "
             + "GROUP BY p.paymentMethod ORDER BY SUM(p.amount) DESC")
     List<PaymentMethodSummary> summariseByPaymentMethod(@Param("schoolId") Long schoolId);
+
+    @Query("SELECT p.paymentMethod AS paymentMethod, COUNT(p) AS total, SUM(p.amount) AS amount FROM Payment p "
+            + "WHERE p.schoolId = :schoolId AND p.deletedAt IS NULL AND p.status = 'COMPLETED' "
+            + "AND p.paymentDate >= :fromDate AND p.paymentDate <= :toDate GROUP BY p.paymentMethod ORDER BY SUM(p.amount) DESC")
+    List<PaymentMethodSummary> summariseByPaymentMethodBetween(@Param("schoolId") Long schoolId, @Param("fromDate") LocalDate fromDate, @Param("toDate") LocalDate toDate);
 }

@@ -15,7 +15,7 @@ import type {
 } from '@/types/api';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean };
+type RetryableAxiosRequestConfig = InternalAxiosRequestConfig & { _retry?: boolean; skipAuthRetry?: boolean };
 let currentUserRequest: Promise<CurrentUserResponse> | null = null;
 
 export async function unwrapApiResponse<T>(
@@ -103,7 +103,8 @@ api.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       retryableRequest &&
-      !retryableRequest._retry
+      !retryableRequest._retry &&
+      !retryableRequest.skipAuthRetry
     ) {
       retryableRequest._retry = true;
 

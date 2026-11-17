@@ -10,7 +10,14 @@ public record CommunicationDeliveryDto(
         String status,
         String providerMessageId,
         String failureCode,
+        String errorMessage,
+        String deliveryStatus,
+        LocalDateTime sentAt,
+        LocalDateTime deliveredAt,
+        String batchId,
         int attemptCount,
-        LocalDateTime lastAttemptAt
+        LocalDateTime lastAttemptAt,
+        String recipientName,
+        String recipientPhone
 ) {
 }

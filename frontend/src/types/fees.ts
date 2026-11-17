@@ -77,3 +77,55 @@ export interface CreatePaymentRequest {
   receiptNumber?: string;
   remarks?: string;
 }
+
+export interface BulkFeeAssignmentRequest {
+  scope: 'CLASS' | 'STREAM';
+  classId: number;
+  streamId: number | null;
+  academicYearId: number | null;
+  feeStructureIds: number[];
+  dueDate: string | null;
+}
+
+export interface BulkAssignmentFeeStructurePreview {
+  feeStructureId: number;
+  name: string;
+  amount: number;
+  dueDate: string | null;
+}
+
+export interface BulkAssignmentStudentPreview {
+  studentId: number;
+  admissionNumber: string;
+  firstName: string;
+  lastName: string;
+  name: string;
+  className: string;
+  streamName: string;
+}
+
+export interface BulkFeeAssignmentPreviewDto {
+  eligibleStudentCount: number;
+  students: BulkAssignmentStudentPreview[];
+  feeStructures: BulkAssignmentFeeStructurePreview[];
+  totalAssignments: number;
+  totalAmount: number;
+  dueDate: string | null;
+}
+
+export interface BulkAssignmentDetail {
+  studentId: number;
+  studentName: string;
+  admissionNumber: string;
+  feeStructureId: number;
+  feeStructureName: string;
+  outcome: string;
+  reason: string | null;
+}
+
+export interface BulkFeeAssignmentResultDto {
+  assigned: number;
+  skipped: number;
+  failed: number;
+  details: BulkAssignmentDetail[];
+}

@@ -1,19 +1,34 @@
-<#
-.SYNOPSIS
-Start EduManage backend.
-#>
+﻿$ErrorActionPreference = 'Stop'
 
-$ErrorActionPreference = 'Stop'
+if ([string]::IsNullOrWhiteSpace($env:DATABASE_URL)) {
+    $env:DATABASE_URL = 'jdbc:postgresql://localhost:5432/edumanage'
+}
 
-$env:DATABASE_URL = $env:DATABASE_URL -or 'jdbc:postgresql://localhost:5432/edumanage'
-$env:DATABASE_USERNAME = $env:DATABASE_USERNAME -or 'edumanage'
-$env:DATABASE_PASSWORD = $env:DATABASE_PASSWORD -or 'edumanage'
-$env:JWT_SECRET = $env:JWT_SECRET -or 'change-me-in-production-use-a-long-random-string'
-$env:CORS_ALLOWED_ORIGINS = $env:CORS_ALLOWED_ORIGINS -or 'http://localhost:5173,http://localhost:3000'
+if ([string]::IsNullOrWhiteSpace($env:DATABASE_USERNAME)) {
+    $env:DATABASE_USERNAME = 'edumanage'
+}
 
-Push-Location "$PSScriptRoot/.."
+if ([string]::IsNullOrWhiteSpace($env:DATABASE_PASSWORD)) {
+    $env:DATABASE_PASSWORD = 'edumanage'
+}
 
-Write-Host "Running Maven Spring Boot..."
-& mvn spring-boot:run
+if ([string]::IsNullOrWhiteSpace($env:JWT_SECRET)) {
+    $env:JWT_SECRET = 'change-me-in-production-use-a-long-random-string'
+}
 
-Pop-Location
+if ([string]::IsNullOrWhiteSpace($env:CORS_ALLOWED_ORIGINS)) {
+    $env:CORS_ALLOWED_ORIGINS = 'http://localhost:5173,http://localhost:3000'
+}
+
+Write-Host "Starting EduManage Backend..." -ForegroundColor Cyan
+Write-Host "Database URL: $env:DATABASE_URL" -ForegroundColor Green
+Write-Host "Database User: $env:DATABASE_USERNAME" -ForegroundColor Green
+
+Push-Location $PSScriptRoot
+
+try {
+    & mvn -f "$PSScriptRoot\pom.xml" spring-boot:run
+}
+finally {
+    Pop-Location
+}

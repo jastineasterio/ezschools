@@ -16,6 +16,30 @@ public interface ExaminationSubjectRepository extends JpaRepository<ExaminationS
     Page<ExaminationSubject> findByExaminationId(Long examinationId, Pageable pageable);
     List<ExaminationSubject> findByExaminationId(Long examinationId);
     Optional<ExaminationSubject> findByExaminationIdAndSubjectIdAndClassIdAndStreamId(Long examinationId, Long subjectId, Long classId, Long streamId);
+    @Query("""
+            select es from ExaminationSubject es
+            join es.examination e
+            where e.schoolId = :schoolId
+              and es.classId = :classId
+              and es.subjectId = :subjectId
+              and e.academicYearId = :academicYearId
+              and es.deletedAt is null
+              and e.deletedAt is null
+            """)
+    List<ExaminationSubject> findBySchoolIdAndClassIdAndSubjectIdAndAcademicYearId(
+            @Param("schoolId") Long schoolId,
+            @Param("classId") Long classId,
+            @Param("subjectId") Long subjectId,
+            @Param("academicYearId") Long academicYearId);
+
+    @Query("""
+            select exists(
+                select es from ExaminationSubject es
+                where es.gradingSchemeId = :gradingSchemeId
+                  and es.deletedAt is null
+            )
+            """)
+    boolean existsByGradingSchemeId(@Param("gradingSchemeId") Long gradingSchemeId);
 
     @Query("""
             select distinct new com.edumanage.teacherworkspace.dto.TeacherUpcomingExaminationDto(

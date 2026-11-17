@@ -151,8 +151,8 @@ export function ManagerAcademicYearsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Academic Years</h1>
-          <p className="mt-1 text-muted-foreground">Manage academic years</p>
+          <h1 className="text-2xl font-bold tracking-tight">Academic Years</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage academic years</p>
         </div>
         <Button onClick={openCreate}>
           <Plus className="mr-2 h-4 w-4" /> Add Academic Year
@@ -171,7 +171,7 @@ export function ManagerAcademicYearsPage() {
         </Alert>
       )}
       {success && (
-        <Alert>
+        <Alert variant="success">
           <AlertTitle>Saved</AlertTitle>
           <AlertDescription>{success}</AlertDescription>
         </Alert>
@@ -183,7 +183,7 @@ export function ManagerAcademicYearsPage() {
         </Alert>
       )}
 
-      <Card className="p-4">
+      <Card className="p-5">
         <div className="mb-4">
           <Input
             placeholder="Search academic years..."
@@ -201,7 +201,7 @@ export function ManagerAcademicYearsPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border">
+            <div className="rounded-xl border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -232,16 +232,18 @@ export function ManagerAcademicYearsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {item.isCurrent && (
+                        {item.isCurrent ? (
                           <Badge variant="success">
-                            <Star className="mr-1 h-3 w-3" /> Current
+                            <Star className="mr-1.5 h-3 w-3" /> Current
                           </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
                       <TableCell>
                         <DropdownMenu
                           trigger={
-                            <button className="rounded-full p-1 hover:bg-muted">
+                            <button className="rounded-full p-1.5 hover:bg-accent">
                               <MoreVertical className="h-4 w-4" />
                             </button>
                           }
@@ -262,7 +264,7 @@ export function ManagerAcademicYearsPage() {
               </Table>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Page {page + 1} of {data?.totalPages || 1}
               </p>
@@ -299,22 +301,22 @@ export function ManagerAcademicYearsPage() {
           )}
           <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
+              <label className="text-sm font-medium text-foreground">Name *</label>
               <Input {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Start Date *</label>
+              <label className="text-sm font-medium text-foreground">Start Date *</label>
               <Input type="date" {...register('startDate')} />
               {errors.startDate && <p className="text-sm text-destructive">{errors.startDate.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">End Date *</label>
+              <label className="text-sm font-medium text-foreground">End Date *</label>
               <Input type="date" {...register('endDate')} />
               {errors.endDate && <p className="text-sm text-destructive">{errors.endDate.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium text-foreground">Status</label>
               <Select
                 {...register('status')}
                 options={[

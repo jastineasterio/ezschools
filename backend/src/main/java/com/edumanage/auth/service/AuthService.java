@@ -153,6 +153,7 @@ public class AuthService {
         userRepository.save(user);
     }
 
+    @Transactional(readOnly = true)
     public UserDto getCurrentUser() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated()) {

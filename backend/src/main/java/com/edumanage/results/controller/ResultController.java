@@ -24,8 +24,12 @@ public class ResultController {
 
     @GetMapping
     @PreAuthorize("hasAnyAuthority('ROLE_MANAGER', 'ROLE_HOD')")
-    public ResponseEntity<ApiResponse<PageResponse<ResultDto>>> list(Pageable pageable) {
-        var results = resultService.list(pageable);
+    public ResponseEntity<ApiResponse<PageResponse<ResultDto>>> list(Pageable pageable,
+                                                                     @RequestParam(required = false) Long examinationId,
+                                                                     @RequestParam(required = false) Long classId,
+                                                                     @RequestParam(required = false) Long streamId,
+                                                                     @RequestParam(required = false) Long subjectId) {
+        var results = resultService.list(pageable, examinationId, classId, streamId, subjectId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Results fetched", results, null, LocalDateTime.now(), "/api/school/results"));
     }
 
@@ -93,5 +97,12 @@ public class ResultController {
     public ResponseEntity<ApiResponse<ResultDto>> publish(@PathVariable Long id) {
         var result = resultService.publish(id);
         return ResponseEntity.ok(new ApiResponse<>(true, "Result published", result, null, LocalDateTime.now(), "/api/school/results/" + id + "/publish"));
+    }
+
+    @PostMapping("/{id}/reopen")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    public ResponseEntity<ApiResponse<ResultDto>> reopen(@PathVariable Long id) {
+        var result = resultService.reopen(id);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Result reopened", result, null, LocalDateTime.now(), "/api/school/results/" + id + "/reopen"));
     }
 }

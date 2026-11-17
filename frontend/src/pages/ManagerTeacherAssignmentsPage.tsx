@@ -19,6 +19,7 @@ import {
   updateTeacherAssignment,
 } from '@/services/people';
 import type { Teacher, TeacherAssignment, UpdateTeacherAssignmentRequest } from '@/services/people';
+import { getApiErrorMessage } from '@/services/api';
 import { Loader2, Pencil, Trash2 } from 'lucide-react';
 
 export function ManagerTeacherAssignmentsPage() {
@@ -75,7 +76,7 @@ export function ManagerTeacherAssignmentsPage() {
       setSubjectIds([]);
       setFormError(null);
     },
-    onError: (error: unknown) => setFormError(error instanceof Error ? error.message : 'Could not create assignments'),
+    onError: (error: unknown) => setFormError(getApiErrorMessage(error, 'Could not create assignments')),
   });
   const updateMutation = useMutation({
     mutationFn: ({ id, data }: { id: number; data: UpdateTeacherAssignmentRequest }) =>
@@ -86,7 +87,7 @@ export function ManagerTeacherAssignmentsPage() {
       setSubjectIds([]);
       setFormError(null);
     },
-    onError: (error: unknown) => setFormError(error instanceof Error ? error.message : 'Could not update assignment'),
+    onError: (error: unknown) => setFormError(getApiErrorMessage(error, 'Could not update assignment')),
   });
   const deleteMutation = useMutation({
     mutationFn: deleteTeacherAssignment,
@@ -94,7 +95,7 @@ export function ManagerTeacherAssignmentsPage() {
       invalidateAssignments();
       setFormError(null);
     },
-    onError: (error: unknown) => setFormError(error instanceof Error ? error.message : 'Could not remove assignment'),
+    onError: (error: unknown) => setFormError(getApiErrorMessage(error, 'Could not remove assignment')),
   });
 
   const activeTeachers = (teachersQuery.data?.content ?? []).filter(

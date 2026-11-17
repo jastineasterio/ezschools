@@ -5,11 +5,12 @@ import com.edumanage.branding.service.SchoolBrandingService;
 import com.edumanage.common.dto.ApiResponse;
 import com.edumanage.exception.ForbiddenException;
 import com.edumanage.tenant.TenantContext;
-import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 
@@ -29,15 +30,5 @@ public class SchoolBrandingController {
         }
         var branding = brandingService.getBranding(tenantId);
         return ResponseEntity.ok(new ApiResponse<>(true, "Branding fetched", branding, null, LocalDateTime.now(), "/api/school/branding"));
-    }
-
-    @PutMapping
-    public ResponseEntity<ApiResponse<SchoolBrandingDto>> updateBranding(@Valid @RequestBody SchoolBrandingDto request) {
-        Long tenantId = TenantContext.getTenantId();
-        if (tenantId == null) {
-            throw new ForbiddenException("School users only");
-        }
-        var branding = brandingService.updateBranding(tenantId, request);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Branding updated", branding, null, LocalDateTime.now(), "/api/school/branding"));
     }
 }

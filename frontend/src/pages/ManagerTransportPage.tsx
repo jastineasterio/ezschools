@@ -587,7 +587,7 @@ export function ManagerTransportPage() {
                               <DropdownMenuItem onClick={() => handleVehicleEdit(vehicle)}>
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteVehicleMutation.mutate(vehicle.id)} className="text-red-600">
+                              <DropdownMenuItem onClick={() => deleteVehicleMutation.mutate(vehicle.id)} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenu>
@@ -672,7 +672,7 @@ export function ManagerTransportPage() {
                               <DropdownMenuItem onClick={() => handleRouteEdit(route)}>
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteRouteMutation.mutate(route.id)} className="text-red-600">
+                              <DropdownMenuItem onClick={() => deleteRouteMutation.mutate(route.id)} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenu>
@@ -778,7 +778,7 @@ export function ManagerTransportPage() {
                               <DropdownMenuItem onClick={() => handleStopEdit(stop)}>
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteStopMutation.mutate({ routeId: selectedRouteId, stopId: stop.id })} className="text-red-600">
+                              <DropdownMenuItem onClick={() => deleteStopMutation.mutate({ routeId: selectedRouteId, stopId: stop.id })} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenu>
@@ -865,7 +865,7 @@ export function ManagerTransportPage() {
                               <DropdownMenuItem onClick={() => handleAssignmentEdit(assignment)}>
                                 Edit
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => deleteAssignmentMutation.mutate(assignment.id)} className="text-red-600">
+                              <DropdownMenuItem onClick={() => deleteAssignmentMutation.mutate(assignment.id)} className="text-destructive">
                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
                               </DropdownMenuItem>
                             </DropdownMenu>

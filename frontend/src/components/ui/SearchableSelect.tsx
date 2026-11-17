@@ -16,6 +16,7 @@ interface SearchableSelectProps {
   loading?: boolean;
   disabled?: boolean;
   emptyMessage?: string;
+  error?: string;
 }
 
 export function SearchableSelect({
@@ -27,6 +28,7 @@ export function SearchableSelect({
   loading = false,
   disabled = false,
   emptyMessage = 'No options available',
+  error,
 }: SearchableSelectProps) {
   const selectId = useId();
   const [search, setSearch] = useState('');
@@ -58,6 +60,7 @@ export function SearchableSelect({
           { value: '', label: loading ? 'Loading...' : placeholder },
           ...filteredOptions,
         ]}
+        error={error}
       />
       {!loading && filteredOptions.length === 0 && (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>

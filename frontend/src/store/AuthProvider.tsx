@@ -89,6 +89,18 @@ export function AuthProvider({
     } finally {
       clearTokens();
       setUser(null);
+      try {
+      // Clear every school-branding cache entry so no school's logo or colors
+      // persist into the next session.
+        for (let i = sessionStorage.length - 1; i >= 0; i--) {
+          const key = sessionStorage.key(i);
+          if (key != null && key.startsWith('edumanage:school-branding:')) {
+            sessionStorage.removeItem(key);
+          }
+        }
+      } catch {
+        // ignore
+      }
     }
   };
 

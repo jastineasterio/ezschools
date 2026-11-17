@@ -1,5 +1,5 @@
 import { api as http, createApiResponseClient } from './api';
-import type { PaginatedResponse } from '@/types/api';
+import type { PaginatedResponse, TeacherProfileResponse, UpdateTeacherProfileRequest, ChangePasswordRequest } from '@/types/api';
 
 const api = createApiResponseClient(http);
 
@@ -300,6 +300,21 @@ export async function createTeacher(data: CreateTeacherRequest) {
 
 export async function updateTeacher(id: number, data: UpdateTeacherRequest) {
   const response = await api.put<Teacher>(`/school/teachers/${id}`, data);
+  return response.data;
+}
+
+export async function getMyTeacherProfileDetail() {
+  const { data } = await api.get<TeacherProfileResponse>('/school/teachers/me');
+  return data;
+}
+
+export async function updateMyTeacherProfile(data: UpdateTeacherProfileRequest) {
+  const response = await api.put<TeacherProfileResponse>('/school/teachers/me', data);
+  return response.data;
+}
+
+export async function changePassword(data: ChangePasswordRequest) {
+  const response = await api.post<{ success: boolean; message?: string }>('/auth/change-password', data);
   return response.data;
 }
 

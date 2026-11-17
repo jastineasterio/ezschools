@@ -2,6 +2,7 @@ package com.edumanage.teacherprofiles.controller;
 
 import com.edumanage.teacherprofiles.dto.CreateTeacherProfileRequest;
 import com.edumanage.teacherprofiles.dto.TeacherProfileDto;
+import com.edumanage.teacherprofiles.dto.UpdateTeacherProfileRequest;
 import com.edumanage.teacherprofiles.service.TeacherProfileService;
 import com.edumanage.common.dto.ApiResponse;
 import com.edumanage.common.dto.PageResponse;
@@ -35,9 +36,17 @@ public class TeacherProfileController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("hasAuthority('ROLE_TEACHER')")
     public ResponseEntity<ApiResponse<TeacherProfileDto>> getMyProfile() {
         var teacher = teacherProfileService.getMyProfile();
         return ResponseEntity.ok(new ApiResponse<>(true, "Teacher profile fetched", teacher, null, LocalDateTime.now(), "/api/school/teachers/me"));
+    }
+
+    @PutMapping("/me")
+    @PreAuthorize("hasAuthority('ROLE_TEACHER')")
+    public ResponseEntity<ApiResponse<TeacherProfileDto>> updateMyProfile(@Valid @RequestBody UpdateTeacherProfileRequest request) {
+        var teacher = teacherProfileService.updateMyProfile(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Profile updated", teacher, null, LocalDateTime.now(), "/api/school/teachers/me"));
     }
 
     @PostMapping

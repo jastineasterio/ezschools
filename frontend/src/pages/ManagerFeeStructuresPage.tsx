@@ -181,12 +181,12 @@ export function ManagerFeeStructuresPage() {
         <DialogContent title={editing ? 'Edit Fee Structure' : 'Add Fee Structure'}>
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <Input label="Name" {...register('name')} />
-            {errors.name && <p className="text-sm text-red-600">{errors.name.message}</p>}
+            {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             <Input label="Amount" type="number" step="0.01" {...register('amount')} />
-            {errors.amount && <p className="text-sm text-red-600">{errors.amount.message}</p>}
+            {errors.amount && <p className="text-sm text-destructive">{errors.amount.message}</p>}
             <Input label="Due Date" type="date" {...register('dueDate')} />
             <Input label="Fee Type" {...register('feeType')} />
-            {errors.feeType && <p className="text-sm text-red-600">{errors.feeType.message}</p>}
+            {errors.feeType && <p className="text-sm text-destructive">{errors.feeType.message}</p>}
             <Input label="Description" {...register('description')} />
             <div className="flex justify-end gap-2 pt-2">
               <Button type="button" variant="secondary" onClick={() => setOpen(false)}>Cancel</Button>

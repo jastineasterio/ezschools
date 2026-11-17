@@ -15,4 +15,5 @@ public interface ExaminationRepository extends JpaRepository<Examination, Long> 
     Optional<Examination> findBySchoolIdAndId(Long schoolId, Long id);
     Page<Examination> findBySchoolIdAndAcademicYearId(Long schoolId, Long academicYearId, Pageable pageable);
     long countBySchoolIdAndDeletedAtIsNull(Long schoolId);
+    boolean existsBySchoolIdAndTypeId(Long schoolId, Long typeId);
 }

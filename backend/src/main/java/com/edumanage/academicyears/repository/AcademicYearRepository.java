@@ -16,6 +16,7 @@ import org.springframework.stereotype.Repository;
 public interface AcademicYearRepository extends JpaRepository<AcademicYear, Long> {
     List<AcademicYear> findBySchoolIdOrderByStartDateDesc(Long schoolId);
     Optional<AcademicYear> findBySchoolIdAndIsCurrentTrueAndDeletedAtIsNull(Long schoolId);
+    Optional<AcademicYear> findBySchoolIdAndId(Long schoolId, Long id);
     boolean existsBySchoolIdAndName(Long schoolId, String name);
 
     @Query("""

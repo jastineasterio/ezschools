@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { getApiErrorMessage, unwrapApiResponse, api } from '@/services/api';
 import type { ApiResponse, PageResponse } from '@/types/api';
+import { useState } from 'react';
 
 interface TeacherAssignment {
   id: number;
@@ -37,8 +38,44 @@ const days = [
   'Sunday',
 ];
 
+const normalizeTimeToHHmm = (value: string): string => {
+  if (!value) return value;
+  const trimmed = value.trim();
+  // If already in HH:mm or HH:mm:ss format, normalize to HH:mm
+  const timeMatch = trimmed.match(/^([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?$/);
+  if (timeMatch) {
+    const hours = timeMatch[1].padStart(2, '0');
+    const minutes = timeMatch[2];
+    return `${hours}:${minutes}`;
+  }
+  // Try to parse 12h format if somehow present (e.g., 03:42 PM)
+  const twelveHourMatch = trimmed.match(/^([0]?\d|1[0-2]):([0-5]\d)(?::([0-5]\d))?\s*([APap][Mm])$/);
+  if (twelveHourMatch) {
+    let hours = parseInt(twelveHourMatch[1], 10);
+    const minutes = twelveHourMatch[2];
+    const meridiem = twelveHourMatch[4].toUpperCase();
+    if (meridiem === 'PM' && hours !== 12) {
+      hours += 12;
+    }
+    if (meridiem === 'AM' && hours === 12) {
+      hours = 0;
+    }
+    return `${hours.toString().padStart(2, '0')}:${minutes}`;
+  }
+  return trimmed;
+};
+
+const isTimeAfter = (start: string, end: string): boolean => {
+  const [sh, sm] = start.split(':').map((v) => parseInt(v, 10));
+  const [eh, em] = end.split(':').map((v) => parseInt(v, 10));
+  const startMinutes = sh * 60 + sm;
+  const endMinutes = eh * 60 + em;
+  return endMinutes > startMinutes;
+};
+
 export function ManagerTimetablePage() {
   const queryClient = useQueryClient();
+  const [timeValidationError, setTimeValidationError] = useState<string | null>(null);
   const assignmentsQuery = useQuery({
     queryKey: ['teacher-assignments', 'timetable'],
     queryFn: () =>
@@ -67,7 +104,13 @@ export function ManagerTimetablePage() {
       unwrapApiResponse(
         api.post<ApiResponse<TimetableEntry>>('/school/timetables', entry)
       ),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['school-timetable'] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['school-timetable'] });
+      setTimeValidationError(null);
+    },
+    onError: () => {
+      setTimeValidationError(null);
+    },
   });
   const deleteEntry = useMutation({
     mutationFn: (id: number) =>
@@ -77,13 +120,29 @@ export function ManagerTimetablePage() {
 
   const submit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setTimeValidationError(null);
     const formElement = event.currentTarget;
     const form = new FormData(formElement);
+    const startTimeRaw = String(form.get('startTime') || '');
+    const endTimeRaw = String(form.get('endTime') || '');
+    const startTime = normalizeTimeToHHmm(startTimeRaw);
+    const endTime = normalizeTimeToHHmm(endTimeRaw);
+
+    if (!startTime || !endTime) {
+      setTimeValidationError('Please provide both start and end times.');
+      return;
+    }
+
+    if (!isTimeAfter(startTime, endTime)) {
+      setTimeValidationError('Lesson end time must be after its start time.');
+      return;
+    }
+
     createEntry.mutate({
       teacherAssignmentId: Number(form.get('assignment')),
       dayOfWeek: Number(form.get('dayOfWeek')),
-      startTime: String(form.get('startTime')),
-      endTime: String(form.get('endTime')),
+      startTime,
+      endTime,
       room: String(form.get('room') || '').trim() || undefined,
     }, { onSuccess: () => formElement.reset() });
   };
@@ -96,10 +155,10 @@ export function ManagerTimetablePage() {
         <h1 className="text-3xl font-bold">Timetable</h1>
         <p className="mt-1 text-muted-foreground">Schedule lessons from existing teacher class and subject assignments.</p>
       </div>
-      {error && (
+      {(error || timeValidationError) && (
         <Alert variant="destructive">
           <AlertTitle>Timetable action failed</AlertTitle>
-          <AlertDescription>{getApiErrorMessage(error, 'The timetable could not be loaded or changed.')}</AlertDescription>
+          <AlertDescription>{timeValidationError || getApiErrorMessage(error, 'The timetable could not be loaded or changed.')}</AlertDescription>
         </Alert>
       )}
       <Card className="space-y-4 p-6">
@@ -135,11 +194,11 @@ export function ManagerTimetablePage() {
             </label>
             <label className="space-y-1 text-sm">
               <span>Start time</span>
-              <input className="w-full rounded-md border bg-background px-3 py-2" name="startTime" type="time" required />
+              <input className="w-full rounded-md border bg-background px-3 py-2" name="startTime" type="time" step="60" required />
             </label>
             <label className="space-y-1 text-sm">
               <span>End time</span>
-              <input className="w-full rounded-md border bg-background px-3 py-2" name="endTime" type="time" required />
+              <input className="w-full rounded-md border bg-background px-3 py-2" name="endTime" type="time" step="60" required />
             </label>
             <div className="flex items-end">
               <Button disabled={createEntry.isPending}>
@@ -148,7 +207,7 @@ export function ManagerTimetablePage() {
             </div>
           </form>
         ) : <p className="text-sm text-muted-foreground">Loading teacher assignments…</p>}
-        {createEntry.isSuccess && <p role="status" className="text-sm text-green-700">Lesson scheduled.</p>}
+        {createEntry.isSuccess && <p role="status" className="text-sm text-green-600 dark:text-green-400">Lesson scheduled.</p>}
       </Card>
 
       <Card className="space-y-4 p-6">

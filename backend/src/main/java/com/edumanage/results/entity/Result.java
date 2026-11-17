@@ -65,6 +65,12 @@ public class Result extends SoftDeletableEntity {
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
+    @Column(name = "grading_scheme_id")
+    private Long gradingSchemeId;
+
+    @Column(name = "grading_scheme_name", length = 255)
+    private String gradingSchemeName;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "student_id", insertable = false, updatable = false)
     private StudentProfile student;

@@ -1,5 +1,6 @@
 package com.edumanage.gradingschemes.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -17,6 +18,8 @@ public class GradingSchemeDto {
     private Long schoolId;
     private String name;
     private String description;
+
+    @JsonProperty("isDefault")
     private boolean isDefault;
     private String status;
     private List<GradingSchemeRangeDto> ranges;

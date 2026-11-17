@@ -26,6 +26,8 @@ public class ResultDto {
     private String subjectName;
     private Long classId;
     private String className;
+    private Long streamId;
+    private String streamName;
     private Long teacherId;
     private String teacherName;
     private Integer marksObtained;
@@ -38,6 +40,8 @@ public class ResultDto {
     private LocalDateTime reviewedAt;
     private LocalDateTime approvedAt;
     private LocalDateTime publishedAt;
+    private Long gradingSchemeId;
+    private String gradingSchemeName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

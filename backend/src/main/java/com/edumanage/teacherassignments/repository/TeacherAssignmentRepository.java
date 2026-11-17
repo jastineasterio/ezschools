@@ -28,4 +28,9 @@ public interface TeacherAssignmentRepository extends JpaRepository<TeacherAssign
     boolean existsByTeacherIdAndSubjectIdAndClassIdAndStreamIdAndAcademicYearIdAndIdNotAndDeletedAtIsNull(
             Long teacherId, Long subjectId, Long classId, Long streamId, Long academicYearId, Long id);
     void deleteByTeacherIdAndAcademicYearId(Long teacherId, Long academicYearId);
+
+    Optional<TeacherAssignment> findByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdAndAcademicYearId(
+            Long teacherId, Long schoolId, Long subjectId, Long classId, Long streamId, Long academicYearId);
+    Optional<TeacherAssignment> findByTeacherIdAndSchoolIdAndSubjectIdAndClassIdAndStreamIdIsNullAndAcademicYearId(
+            Long teacherId, Long schoolId, Long subjectId, Long classId, Long academicYearId);
 }

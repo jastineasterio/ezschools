@@ -41,6 +41,43 @@ export default {
           DEFAULT: 'hsl(var(--card))',
           foreground: 'hsl(var(--card-foreground))',
         },
+        sidebar: {
+          background: 'hsl(var(--sidebar-background))',
+          text: 'hsl(var(--sidebar-text))',
+        },
+        header: {
+          background: 'hsl(var(--header-background))',
+        },
+        table: {
+          header: 'hsl(var(--table-header))',
+          row: 'hsl(var(--table-row))',
+          hover: 'hsl(var(--table-hover))',
+        },
+        school: {
+          primary: 'hsl(var(--school-primary))',
+          'primary-foreground': 'hsl(var(--school-primary-foreground))',
+          secondary: 'hsl(var(--school-secondary))',
+          'secondary-foreground': 'hsl(var(--school-secondary-foreground))',
+          accent: 'hsl(var(--school-accent))',
+          'accent-foreground': 'hsl(var(--school-accent-foreground))',
+          background: 'hsl(var(--school-background))',
+          text: 'hsl(var(--school-text))',
+          card: 'hsl(var(--school-card))',
+          'card-foreground': 'hsl(var(--school-card-foreground))',
+          sidebar: {
+            background: 'hsl(var(--school-sidebar-background))',
+            text: 'hsl(var(--school-sidebar-text))',
+          },
+          'active-nav': {
+            background: 'hsl(var(--school-active-nav-background))',
+            text: 'hsl(var(--school-active-nav-text))',
+          },
+          border: 'hsl(var(--school-border))',
+          muted: 'hsl(var(--school-muted))',
+          'muted-foreground': 'hsl(var(--school-muted-foreground))',
+          input: 'hsl(var(--school-input))',
+          ring: 'hsl(var(--school-ring))',
+        },
       },
       borderRadius: {
         lg: 'var(--radius)',

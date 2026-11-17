@@ -88,6 +88,11 @@ app:
       api-key: ${DARSMS_API_KEY:}
       sender-id: ${DARSMS_SENDER_ID:}
       base-url: ${DARSMS_BASE_URL:https://dev.darsms.co.tz/api/v1}
+    delivery-poll:
+      enabled: ${DELIVERY_POLL_ENABLED:true}
+      interval-ms: ${DELIVERY_POLL_INTERVAL_MS:300000}
+      max-attempts: ${DELIVERY_POLL_MAX_ATTEMPTS:24}
+      min-interval-ms: ${DELIVERY_POLL_MIN_INTERVAL_MS:240000}
     email:
       from: ${SMTP_FROM:${SMTP_USERNAME:}}
   encryption:

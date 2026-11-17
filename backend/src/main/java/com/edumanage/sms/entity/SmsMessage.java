@@ -34,6 +34,9 @@ public class SmsMessage extends UuidBaseEntity {
     @Column(name = "provider_message_id", length = 255)
     private String providerMessageId;
 
+    @Column(name = "batch_id", length = 255)
+    private String batchId;
+
     @Column(name = "error_message", columnDefinition = "TEXT")
     private String errorMessage;
 

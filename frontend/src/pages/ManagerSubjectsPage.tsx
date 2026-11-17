@@ -164,8 +164,8 @@ export function ManagerSubjectsPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Subjects</h1>
-          <p className="mt-1 text-muted-foreground">Manage subjects</p>
+          <h1 className="text-2xl font-bold tracking-tight">Subjects</h1>
+          <p className="mt-1 text-sm text-muted-foreground">Manage subjects</p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           <Link to="/school/stream-subjects" className="text-sm font-medium text-primary hover:underline">
@@ -195,7 +195,7 @@ export function ManagerSubjectsPage() {
         </Alert>
       )}
 
-      <Card className="p-4">
+      <Card className="p-5">
         <div className="mb-4">
           <Input
             placeholder="Search subjects..."
@@ -213,7 +213,7 @@ export function ManagerSubjectsPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-lg border">
+            <div className="rounded-xl border overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -245,7 +245,7 @@ export function ManagerSubjectsPage() {
                       <TableCell>
                         <DropdownMenu
                           trigger={
-                            <button className="rounded-full p-1 hover:bg-muted">
+                            <button className="rounded-full p-1.5 hover:bg-accent">
                               <MoreVertical className="h-4 w-4" />
                             </button>
                           }
@@ -264,7 +264,7 @@ export function ManagerSubjectsPage() {
               </Table>
             </div>
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between mt-4">
               <p className="text-sm text-muted-foreground">
                 Page {page + 1} of {data?.totalPages || 1}
               </p>
@@ -301,20 +301,20 @@ export function ManagerSubjectsPage() {
           )}
           <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Name *</label>
+              <label className="text-sm font-medium text-foreground">Name *</label>
               <Input {...register('name')} />
               {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Code</label>
+              <label className="text-sm font-medium text-foreground">Code</label>
               <Input {...register('code')} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Description</label>
+              <label className="text-sm font-medium text-foreground">Description</label>
               <Input {...register('description')} />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Department</label>
+              <label className="text-sm font-medium text-foreground">Department</label>
               {departmentsError && (
                 <Alert variant="destructive">
                   <AlertDescription>
@@ -370,7 +370,7 @@ export function ManagerSubjectsPage() {
               )}
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Status</label>
+              <label className="text-sm font-medium text-foreground">Status</label>
               <Select
                 {...register('status')}
                 options={[

@@ -1,7 +1,8 @@
 ﻿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getFeeStructures, getFeeAssignments, assignFee, bulkAssignFee } from '@/services/fees';
+import { getFeeStructures, getFeeAssignments, assignFee, bulkPreviewFeeAssignment, bulkAssignFee } from '@/services/fees';
 import { getStudents } from '@/services/people';
-import type { CreateFeeAssignmentRequest } from '@/types/fees';
+import { getAcademicYears, getClasses, getStreamsByClass, type Stream } from '@/services/academic';
+import type { CreateFeeAssignmentRequest, BulkFeeAssignmentRequest, BulkFeeAssignmentPreviewDto, BulkFeeAssignmentResultDto } from '@/types/fees';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
@@ -10,7 +11,7 @@ import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { Plus, Upload } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -27,6 +28,15 @@ export function ManagerFeeAssignmentsPage() {
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkStructureId, setBulkStructureId] = useState('');
+  const [bulkAcademicYearId, setBulkAcademicYearId] = useState<string | null>(null);
+  const [bulkClassId, setBulkClassId] = useState<string | null>(null);
+  const [bulkStreamId, setBulkStreamId] = useState<string | null>(null);
+  const [bulkDueDate, setBulkDueDate] = useState('');
+  const [preview, setPreview] = useState<BulkFeeAssignmentPreviewDto | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [result, setResult] = useState<BulkFeeAssignmentResultDto | null>(null);
+  const [streams, setStreams] = useState<Stream[]>([]);
 
   const { data: assignments, isLoading: assignmentsLoading } = useQuery({
     queryKey: ['fee-assignments'],
@@ -43,6 +53,66 @@ export function ManagerFeeAssignmentsPage() {
     queryFn: () => getStudents(0, 200),
   });
 
+  const { data: academicYearsData } = useQuery({
+    queryKey: ['academic-years'],
+    queryFn: () => getAcademicYears(),
+  });
+
+  const { data: classesData } = useQuery({
+    queryKey: ['classes'],
+    queryFn: () => getClasses(),
+  });
+
+  const academicYears = academicYearsData?.content || [];
+  const schoolClasses = classesData?.content || [];
+
+  useEffect(() => {
+    let cancelled = false;
+    const classId = bulkClassId ? Number(bulkClassId) : null;
+    if (!classId) {
+      setStreams([]);
+      setBulkStreamId(null);
+      setPreview(null);
+      return;
+    }
+    setPreviewLoading(true);
+    getStreamsByClass(classId).then((loaded) => {
+      if (!cancelled) {
+        setStreams(loaded);
+        setBulkStreamId(null);
+        setPreview(null);
+        setPreviewLoading(false);
+      }
+    });
+    return () => { cancelled = true; };
+  }, [bulkClassId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!bulkStructureId || !bulkAcademicYearId || !bulkClassId) {
+      setPreview(null);
+      return;
+    }
+    setPreviewLoading(true);
+    const payload: BulkFeeAssignmentRequest = {
+      scope: bulkStreamId ? 'STREAM' : 'CLASS',
+      classId: Number(bulkClassId),
+      streamId: bulkStreamId ? Number(bulkStreamId) : null,
+      academicYearId: Number(bulkAcademicYearId),
+      feeStructureIds: [Number(bulkStructureId)],
+      dueDate: bulkDueDate || null,
+    };
+    bulkPreviewFeeAssignment(payload).then((p) => {
+      if (!cancelled) {
+        setPreview(p);
+        setPreviewLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setPreviewLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [bulkStructureId, bulkAcademicYearId, bulkClassId, bulkStreamId, bulkDueDate]);
+
   const assignMutation = useMutation({
     mutationFn: (payload: CreateFeeAssignmentRequest) => assignFee(payload),
     onSuccess: () => {
@@ -52,11 +122,10 @@ export function ManagerFeeAssignmentsPage() {
   });
 
   const bulkMutation = useMutation({
-    mutationFn: ({ feeStructureId, studentIds }: { feeStructureId: number; studentIds: number[] }) =>
-      bulkAssignFee(feeStructureId, studentIds),
-    onSuccess: () => {
+    mutationFn: (payload: BulkFeeAssignmentRequest) => bulkAssignFee(payload),
+    onSuccess: (res) => {
+      setResult(res);
       queryClient.invalidateQueries({ queryKey: ['fee-assignments'] });
-      setBulkOpen(false);
     },
   });
 
@@ -68,9 +137,6 @@ export function ManagerFeeAssignmentsPage() {
     resolver: zodResolver(schema),
   });
 
-  const [bulkStructureId, setBulkStructureId] = useState('');
-  const [bulkStudentIds, setBulkStudentIds] = useState('');
-
   const onSubmit = (values: FormValues) => {
     assignMutation.mutate({
       studentId: values.studentId,
@@ -80,9 +146,18 @@ export function ManagerFeeAssignmentsPage() {
   };
 
   const handleBulkAssign = () => {
-    const ids = bulkStudentIds.split(',').map((s) => Number(s.trim())).filter((n) => !isNaN(n));
-    if (!bulkStructureId || ids.length === 0) return;
-    bulkMutation.mutate({ feeStructureId: Number(bulkStructureId), studentIds: ids });
+    if (!bulkStructureId || !bulkAcademicYearId || !bulkClassId) return;
+    if (!preview || preview.eligibleStudentCount === 0) return;
+    if (!window.confirm(`Assign fee to ${preview.eligibleStudentCount} eligible student(s)?`)) return;
+    const payload: BulkFeeAssignmentRequest = {
+      scope: bulkStreamId ? 'STREAM' : 'CLASS',
+      classId: Number(bulkClassId),
+      streamId: bulkStreamId ? Number(bulkStreamId) : null,
+      academicYearId: Number(bulkAcademicYearId),
+      feeStructureIds: [Number(bulkStructureId)],
+      dueDate: bulkDueDate || null,
+    };
+    bulkMutation.mutate(payload);
   };
 
   const items = assignments || [];
@@ -162,7 +237,7 @@ export function ManagerFeeAssignmentsPage() {
                 options={studentOptions.map((s) => ({ value: String(s.id), label: `${s.firstName} ${s.lastName} (${s.admissionNumber})` }))}
                 {...register('studentId')}
               />
-              {errors.studentId && <p className="text-sm text-red-600 mt-1">{errors.studentId.message}</p>}
+              {errors.studentId && <p className="text-sm text-destructive mt-1">{errors.studentId.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Fee Structure</label>
@@ -170,7 +245,7 @@ export function ManagerFeeAssignmentsPage() {
                 options={(feeStructures?.content || []).map((f) => ({ value: String(f.id), label: `${f.name} - ${f.amount.toLocaleString()}` }))}
                 {...register('feeStructureId')}
               />
-              {errors.feeStructureId && <p className="text-sm text-red-600 mt-1">{errors.feeStructureId.message}</p>}
+              {errors.feeStructureId && <p className="text-sm text-destructive mt-1">{errors.feeStructureId.message}</p>}
             </div>
             <div>
               <label className="block text-sm font-medium mb-1">Due Date</label>
@@ -184,9 +259,20 @@ export function ManagerFeeAssignmentsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+      <Dialog open={bulkOpen} onOpenChange={(isOpen) => {
+        setBulkOpen(isOpen);
+        if (!isOpen) {
+          setBulkStructureId('');
+          setBulkAcademicYearId(null);
+          setBulkClassId(null);
+          setBulkStreamId(null);
+          setBulkDueDate('');
+          setPreview(null);
+          setResult(null);
+        }
+      }}>
         <DialogContent title="Bulk Assign Fee">
-          <div className="space-y-4">
+          <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); handleBulkAssign(); }}>
             <div>
               <label className="block text-sm font-medium mb-1">Fee Structure</label>
               <Select
@@ -194,16 +280,102 @@ export function ManagerFeeAssignmentsPage() {
                 onChange={(e) => setBulkStructureId(e.target.value)}
                 options={(feeStructures?.content || []).map((f) => ({ value: String(f.id), label: `${f.name} - ${f.amount.toLocaleString()}` }))}
               />
+              {!bulkStructureId && <p className="text-sm text-destructive mt-1">Fee structure is required</p>}
             </div>
             <div>
-              <label className="block text-sm font-medium mb-1">Student IDs (comma separated)</label>
-              <Input value={bulkStudentIds} onChange={(e) => setBulkStudentIds(e.target.value)} placeholder="1, 2, 3" />
+              <label className="block text-sm font-medium mb-1">Academic Year</label>
+              <Select
+                value={bulkAcademicYearId ?? ''}
+                onChange={(e) => setBulkAcademicYearId(e.target.value || null)}
+                options={academicYears.map((y) => ({ value: String(y.id), label: y.name }))}
+              />
+              {!bulkAcademicYearId && <p className="text-sm text-destructive mt-1">Academic year is required</p>}
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button type="button" variant="secondary" onClick={() => setBulkOpen(false)}>Cancel</Button>
-              <Button onClick={handleBulkAssign} disabled={bulkMutation.isPending}>Assign</Button>
+            <div>
+              <label className="block text-sm font-medium mb-1">Class</label>
+              <Select
+                value={bulkClassId ?? ''}
+                onChange={(e) => setBulkClassId(e.target.value || null)}
+                options={schoolClasses.map((c) => ({ value: String(c.id), label: c.name }))}
+              />
+              {!bulkClassId && <p className="text-sm text-destructive mt-1">Class is required</p>}
             </div>
-          </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Stream</label>
+              <Select
+                value={bulkStreamId ?? ''}
+                onChange={(e) => setBulkStreamId(e.target.value || null)}
+                options={[
+                  { value: '', label: 'All Streams' },
+                  ...streams.map((s) => ({ value: String(s.id), label: s.name })),
+                ]}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium mb-1">Due Date (optional)</label>
+              <Input type="date" value={bulkDueDate} onChange={(e) => setBulkDueDate(e.target.value)} />
+            </div>
+
+            {result ? (
+              <div className="border rounded p-3 bg-success/10 text-success">
+                <div className="font-semibold mb-1">Assignment complete</div>
+                <div>Newly assigned: {result.assigned}</div>
+                <div>Already assigned (skipped): {result.skipped}</div>
+                {result.failed > 0 && <div className="text-destructive">Failed: {result.failed}</div>}
+                {result.details && result.details.length > 0 && (
+                  <div className="mt-2 text-sm">
+                    <div className="font-semibold mb-1">Details:</div>
+                    <ul className="list-disc list-inside space-y-1">
+                      {result.details.slice(0, 10).map((d, i) => (
+                        <li key={i}>{d.studentName} ({d.admissionNumber}): {d.outcome} — {d.reason}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <>
+                {previewLoading ? (
+                  <div className="flex items-center gap-2 text-muted-foreground"><Skeleton className="h-4 w-24" /> Loading preview...</div>
+                ) : preview ? (
+                  <div className="border rounded p-3 bg-muted text-sm">
+                    <div><strong>Fee structure:</strong> {preview.feeStructures[0]?.name}</div>
+                    <div><strong>Amount:</strong> {preview.feeStructures[0]?.amount.toLocaleString()}</div>
+                    <div><strong>Academic year:</strong> {academicYears.find((y) => String(y.id) === bulkAcademicYearId)?.name ?? bulkAcademicYearId}</div>
+                    <div><strong>Class:</strong> {schoolClasses.find((c) => String(c.id) === bulkClassId)?.name ?? bulkClassId}</div>
+                    <div><strong>Stream:</strong> {bulkStreamId ? (streams.find((s) => String(s.id) === bulkStreamId)?.name ?? 'All Streams') : 'All Streams'}</div>
+                    <div><strong>Eligible students:</strong> {preview.eligibleStudentCount}</div>
+                    <div><strong>Already assigned (skipped):</strong> {Math.max(0, preview.eligibleStudentCount - preview.totalAssignments)}</div>
+                    <div><strong>To be assigned:</strong> {preview.totalAssignments}</div>
+                    {preview.eligibleStudentCount === 0 && (
+                      <p className="text-sm text-destructive mt-1">No eligible students found for this selection.</p>
+                    )}
+                    {preview.students.length > 0 && (
+                      <div className="mt-2">
+                        <div className="font-semibold mb-1">Students (showing up to 50):</div>
+                        <ul className="text-xs list-disc list-inside space-y-1">
+                          {preview.students.map((s) => (
+                            <li key={s.studentId}>{s.name} — {s.admissionNumber}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Select a fee structure, academic year and class to preview eligible students.</p>
+                )}
+                <div className="flex justify-end gap-2 pt-2">
+                  <Button type="button" variant="secondary" onClick={() => setBulkOpen(false)}>Cancel</Button>
+                  <Button
+                    type="submit"
+                    disabled={bulkMutation.isPending || !bulkStructureId || !bulkAcademicYearId || !bulkClassId || !preview || preview.eligibleStudentCount === 0}
+                  >
+                    {bulkMutation.isPending ? 'Assigning...' : 'Assign'}
+                  </Button>
+                </div>
+              </>
+            )}
+          </form>
         </DialogContent>
       </Dialog>
     </div>

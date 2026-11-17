@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Badge } from '@/components/ui/Badge';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/Table';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
@@ -20,17 +21,18 @@ import {
   createStream,
   updateStream,
   updateStreamStatus,
+  getClasses,
 } from '@/services/academic';
-import type { StreamResponse, CreateStreamRequest } from '@/types/academic';
+import type { StreamResponse, CreateStreamRequest, ClassResponse } from '@/types/academic';
 import type { UpdateStreamRequest } from '@/services/academic';
 import { Loader2 } from 'lucide-react';
 import { getApiErrorMessage } from '@/services/api';
 
 const streamSchema = z.object({
-  classId: z.number().min(1, 'Class is required'),
+  classId: z.coerce.number({ invalid_type_error: 'Class is required' }).min(1, 'Class is required'),
   name: z.string().min(1, 'Name is required'),
   code: z.string().optional(),
-  capacity: z.number().optional(),
+  capacity: z.coerce.number().optional(),
   status: z.string().optional(),
 });
 
@@ -44,6 +46,13 @@ export function ManagerStreamsPage() {
   const [editing, setEditing] = useState<StreamResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+
+  const { data: classesData, isLoading: classesLoading } = useQuery({
+    queryKey: ['classes-for-streams'],
+    queryFn: () => getClasses(0, 500),
+  });
+
+  const classesList: ClassResponse[] = classesData?.content ?? [];
 
   const { data, isLoading, error: queryError } = useQuery({
     queryKey: ['streams', page, search, classFilter],
@@ -97,11 +106,13 @@ export function ManagerStreamsPage() {
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors },
   } = useForm<StreamFormValues>({
     resolver: zodResolver(streamSchema),
     defaultValues: {
-      classId: 0,
+      classId: undefined as unknown as number,
       name: '',
       code: '',
       capacity: undefined,
@@ -109,9 +120,11 @@ export function ManagerStreamsPage() {
     },
   });
 
+  const selectedClassId = watch('classId');
+
   const openCreate = () => {
     setEditing(null);
-    reset({ classId: 0, name: '', code: '', capacity: undefined, status: 'ACTIVE' });
+    reset({ classId: undefined as unknown as number, name: '', code: '', capacity: undefined, status: 'ACTIVE' });
     setOpen(true);
     setError(null);
   };
@@ -181,6 +194,7 @@ export function ManagerStreamsPage() {
             onChange={(e) => { setClassFilter(e.target.value); setPage(0); }}
             options={[
               { value: '', label: 'All Classes' },
+              ...classesList.map((cls) => ({ value: String(cls.id), label: cls.name })),
             ]}
             className="max-w-md"
           />
@@ -287,8 +301,25 @@ export function ManagerStreamsPage() {
           <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-4">
             <div className="space-y-2">
               <label className="text-sm font-medium">Class *</label>
-              <Input type="number" {...register('classId', { valueAsNumber: true })} />
+              <SearchableSelect
+                label="Class *"
+                value={selectedClassId ? String(selectedClassId) : ''}
+                options={classesList.map((cls) => ({
+                  value: String(cls.id),
+                  label: cls.code ? `${cls.name} (${cls.code})` : cls.name,
+                }))}
+                placeholder={classesLoading ? 'Loading classes...' : classesList.length === 0 ? 'No classes available' : 'Select a class'}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setValue('classId', val === '' ? (undefined as unknown as number) : Number(val), { shouldValidate: true });
+                }}
+                loading={classesLoading}
+                emptyMessage="No classes found"
+              />
               {errors.classId && <p className="text-sm text-destructive">{errors.classId.message}</p>}
+              {classesList.length === 0 && !classesLoading && (
+                <p className="text-sm text-muted-foreground">This school has no available classes. Please create a class first.</p>
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Name *</label>

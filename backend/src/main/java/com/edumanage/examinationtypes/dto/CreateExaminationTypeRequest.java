@@ -9,11 +9,13 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateExaminationTypeRequest {
-
     @NotBlank(message = "Name is required")
     private String name;
 
     private String code;
 
     private String description;
+
+    private Boolean active = true;
+
 }

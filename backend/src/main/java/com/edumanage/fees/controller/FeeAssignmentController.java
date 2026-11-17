@@ -1,6 +1,9 @@
 package com.edumanage.fees.controller;
 
 import com.edumanage.common.dto.ApiResponse;
+import com.edumanage.fees.dto.BulkFeeAssignmentPreviewDto;
+import com.edumanage.fees.dto.BulkFeeAssignmentRequest;
+import com.edumanage.fees.dto.BulkFeeAssignmentResultDto;
 import com.edumanage.fees.dto.CreateFeeAssignmentRequest;
 import com.edumanage.fees.dto.FeeAssignmentDto;
 import com.edumanage.fees.service.FeeAssignmentService;
@@ -39,10 +42,15 @@ public class FeeAssignmentController {
         return ResponseEntity.ok(new ApiResponse<>(true, "Fee assigned", assignment, null, LocalDateTime.now(), "/api/school/fee-assignments"));
     }
 
+    @PostMapping("/bulk/preview")
+    public ResponseEntity<ApiResponse<BulkFeeAssignmentPreviewDto>> preview(@Valid @RequestBody BulkFeeAssignmentRequest request) {
+        var preview = feeAssignmentService.previewBulkAssignment(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Bulk assignment preview fetched", preview, null, LocalDateTime.now(), "/api/school/fee-assignments/bulk/preview"));
+    }
+
     @PostMapping("/bulk")
-    public ResponseEntity<ApiResponse<Void>> bulkAssign(@RequestParam Long feeStructureId,
-                                                        @RequestBody List<Long> studentIds) {
-        feeAssignmentService.bulkAssign(feeStructureId, studentIds);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Bulk assignment completed", null, null, LocalDateTime.now(), "/api/school/fee-assignments/bulk"));
+    public ResponseEntity<ApiResponse<BulkFeeAssignmentResultDto>> bulkAssign(@Valid @RequestBody BulkFeeAssignmentRequest request) {
+        var result = feeAssignmentService.bulkAssign(request);
+        return ResponseEntity.ok(new ApiResponse<>(true, "Bulk assignment completed", result, null, LocalDateTime.now(), "/api/school/fee-assignments/bulk"));
     }
 }

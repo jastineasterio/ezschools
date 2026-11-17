@@ -51,6 +51,7 @@ public class SecurityConfig {
                         .requestMatchers("/school/users", "/school/users/**", "/api/school/users", "/api/school/users/**")
                         .hasAuthority("ROLE_MANAGER")
                         .requestMatchers("/api/platform/**").hasAnyAuthority("ROLE_SUPER_ADMIN", "SUPER_ADMIN")
+                        .requestMatchers("/api/uploads/**", "/uploads/**").permitAll()
                         .requestMatchers("/actuator/health").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()

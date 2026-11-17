@@ -35,7 +35,7 @@ function CampaignHistory({ campaign }: { campaign: CommunicationCampaign }) {
   return (
     <div className="grid gap-2 text-sm text-muted-foreground sm:grid-cols-2">
       <span>School #{campaign.schoolId} · Sender #{campaign.senderUserId}</span>
-      <span>{campaign.intendedCount} intended · {campaign.acceptedCount} accepted · {campaign.failedCount} failed</span>
+      <span>{campaign.intendedCount} intended · {campaign.sentCount} sent · {campaign.deliveredCount} delivered · {campaign.failedCount} failed</span>
     </div>
   );
 }
@@ -172,7 +172,7 @@ export function PlatformNotificationManagementPage() {
             {testMutation.isPending ? 'Sending…' : 'Send test'}
           </Button>
         </div>
-        {testMutation.isSuccess && <p role="status" className="flex items-center gap-2 text-sm text-green-700"><CheckCircle2 className="h-4 w-4" /> Accepted by SMTP server.</p>}
+        {testMutation.isSuccess && <p role="status" className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400"><CheckCircle2 className="h-4 w-4" /> Accepted by SMTP server.</p>}
         {testMutation.isError && <p role="alert" className="flex items-center gap-2 text-sm text-destructive"><ShieldAlert className="h-4 w-4" /> {requestError(testMutation.error)}</p>}
       </Card>
 
@@ -187,7 +187,7 @@ export function PlatformNotificationManagementPage() {
               <div key={campaign.id} className="space-y-2 p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <span className="font-medium">{campaign.title}</span>
-                  <Badge variant={campaign.status === 'FAILED' ? 'destructive' : campaign.status === 'ACCEPTED' ? 'success' : 'secondary'}>
+                  <Badge variant={campaign.status === 'FAILED' ? 'destructive' : (campaign.status === 'SENT' || campaign.status === 'DELIVERED') ? 'success' : campaign.status === 'PENDING' ? 'warning' : 'secondary'}>
                     {campaign.status}
                   </Badge>
                 </div>

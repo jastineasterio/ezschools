@@ -1,4 +1,4 @@
-ï»¿import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -10,6 +10,7 @@ import type { BookCategory, CreateBookCategoryRequest, Book, CreateBookRequest, 
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
 import { Dialog, DialogContent } from '@/components/ui/Dialog';
@@ -279,7 +280,7 @@ export function ManagerLibraryPage() {
                       <td className="py-3 px-4"><Badge variant={item.status === 'PAID' ? 'success' : item.status === 'WAIVED' ? 'secondary' : 'warning'}>{item.status}</Badge></td>
                       <td className="py-3 px-4"><div className="flex gap-2 justify-end">
                         {item.status === 'PENDING' && <><Button size="sm" variant="outline" onClick={() => { setPaying(item); setPayAmount(String(item.balance)); }}>Pay</Button><Button size="sm" variant="ghost" onClick={() => { if (confirm('Waive this fine?')) waiveFineMutation.mutate(item.id); }}>Waive</Button></>}
-                        <Button variant="ghost" size="icon" onClick={() => { if (confirm('Delete this fine?')) deleteFineMutation.mutate(item.id); }}><DollarSign className="h-4 w-4 text-red-500" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { if (confirm('Delete this fine?')) deleteFineMutation.mutate(item.id); }}><DollarSign className="h-4 w-4 text-destructive" /></Button>
                       </div></td>
                     </tr>)
                   }
@@ -294,7 +295,7 @@ export function ManagerLibraryPage() {
         <DialogContent title="Add Category">
           <form onSubmit={(e) => { e.preventDefault(); catForm.handleSubmit(onCatSubmit)(e); }} className="space-y-4">
             <div><label className="block text-sm font-medium mb-1">Name</label><Input {...catForm.register('name')} /></div>
-            {catForm.formState.errors.name && <p className="text-sm text-red-600">{catForm.formState.errors.name.message}</p>}
+            {catForm.formState.errors.name && <p className="text-sm text-destructive">{catForm.formState.errors.name.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Description</label><Input {...catForm.register('description')} /></div>
             <div><label className="block text-sm font-medium mb-1">Status</label><Controller name="status" control={catForm.control} render={({ field }) => (<Select options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} {...field} />)} /></div>
             <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => { setCatOpen(false); catForm.reset({ name: '', description: '', status: 'ACTIVE' }); }}>Cancel</Button><Button type="submit" disabled={createCatMutation.isPending || updateCatMutation.isPending}>Save</Button></div>
@@ -306,9 +307,9 @@ export function ManagerLibraryPage() {
         <DialogContent title="Add Book">
           <form onSubmit={(e) => { e.preventDefault(); bookForm.handleSubmit(onBookSubmit)(e); }} className="space-y-4">
             <div><label className="block text-sm font-medium mb-1">Title</label><Input {...bookForm.register('title')} /></div>
-            {bookForm.formState.errors.title && <p className="text-sm text-red-600">{bookForm.formState.errors.title.message}</p>}
+            {bookForm.formState.errors.title && <p className="text-sm text-destructive">{bookForm.formState.errors.title.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Author</label><Input {...bookForm.register('author')} /></div>
-            {bookForm.formState.errors.author && <p className="text-sm text-red-600">{bookForm.formState.errors.author.message}</p>}
+            {bookForm.formState.errors.author && <p className="text-sm text-destructive">{bookForm.formState.errors.author.message}</p>}
             <div><label className="block text-sm font-medium mb-1">ISBN</label><Input {...bookForm.register('isbn')} /></div>
             <div><label className="block text-sm font-medium mb-1">Category</label><Controller name="categoryId" control={bookForm.control} render={({ field }) => (<Select options={[{ value: '', label: 'None' }, ...(activeCategories || []).map((c: BookCategory) => ({ value: String(c.id), label: c.name }))]} {...field} />)} /></div>
             <div><label className="block text-sm font-medium mb-1">Publisher</label><Input {...bookForm.register('publisher')} /></div>
@@ -328,9 +329,9 @@ export function ManagerLibraryPage() {
         <DialogContent title="Add Book Copy">
           <form onSubmit={(e) => { e.preventDefault(); copyForm.handleSubmit(onCopySubmit)(e); }} className="space-y-4">
             <div><label className="block text-sm font-medium mb-1">Book</label><Controller name="bookId" control={copyForm.control} render={({ field }) => (<Select options={bookItems.map((b: Book) => ({ value: String(b.id), label: b.title }))} {...field} />)} /></div>
-            {copyForm.formState.errors.bookId && <p className="text-sm text-red-600">{copyForm.formState.errors.bookId.message}</p>}
+            {copyForm.formState.errors.bookId && <p className="text-sm text-destructive">{copyForm.formState.errors.bookId.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Barcode</label><Input {...copyForm.register('barcode')} /></div>
-            {copyForm.formState.errors.barcode && <p className="text-sm text-red-600">{copyForm.formState.errors.barcode.message}</p>}
+            {copyForm.formState.errors.barcode && <p className="text-sm text-destructive">{copyForm.formState.errors.barcode.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Condition</label><Controller name="conditionStatus" control={copyForm.control} render={({ field }) => (<Select options={[{ value: 'GOOD', label: 'Good' }, { value: 'FAIR', label: 'Fair' }, { value: 'POOR', label: 'Poor' }]} {...field} />)} /></div>
             <div><label className="block text-sm font-medium mb-1">Remarks</label><Input {...copyForm.register('remarks')} /></div>
             <div><label className="block text-sm font-medium mb-1">Acquired Date</label><Input type="date" {...copyForm.register('acquiredDate')} /></div>
@@ -346,9 +347,9 @@ export function ManagerLibraryPage() {
             <div><label className="block text-sm font-medium mb-1">Member Type</label><Controller name="memberType" control={memberForm.control} render={({ field }) => (<Select options={[{ value: 'STUDENT', label: 'Student' }, { value: 'TEACHER', label: 'Teacher' }]} {...field} />)} /></div>
             <div><label className="block text-sm font-medium mb-1">Member</label><Controller name="memberId" control={memberForm.control} render={({ field }) => (<Select options={[...studentOptions.map((s: any) => ({ value: String(s.id), label: `${s.firstName} ${s.lastName} (${s.admissionNumber})` })), ...teacherOptions.map((t: any) => ({ value: String(t.id), label: `${(t as any).firstName || 'Teacher'} ${(t as any).lastName || ''}`.trim() }))]} {...field} />)} /></div>
             <div><label className="block text-sm font-medium mb-1">Membership Number</label><Input {...memberForm.register('membershipNumber')} /></div>
-            {memberForm.formState.errors.membershipNumber && <p className="text-sm text-red-600">{memberForm.formState.errors.membershipNumber.message}</p>}
+            {memberForm.formState.errors.membershipNumber && <p className="text-sm text-destructive">{memberForm.formState.errors.membershipNumber.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Joined Date</label><Input type="date" {...memberForm.register('joinedDate')} /></div>
-            {memberForm.formState.errors.joinedDate && <p className="text-sm text-red-600">{memberForm.formState.errors.joinedDate.message}</p>}
+            {memberForm.formState.errors.joinedDate && <p className="text-sm text-destructive">{memberForm.formState.errors.joinedDate.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Membership Expiry</label><Input type="date" {...memberForm.register('membershipExpiry')} /></div>
             <div><label className="block text-sm font-medium mb-1">Status</label><Controller name="status" control={memberForm.control} render={({ field }) => (<Select options={[{ value: 'ACTIVE', label: 'Active' }, { value: 'INACTIVE', label: 'Inactive' }]} {...field} />)} /></div>
             <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => { setMemberOpen(false); memberForm.reset({ memberType: 'STUDENT', membershipNumber: '', joinedDate: '', status: 'ACTIVE' }); }}>Cancel</Button><Button type="submit" disabled={createMemberMutation.isPending || updateMemberMutation.isPending}>Save</Button></div>
@@ -360,13 +361,13 @@ export function ManagerLibraryPage() {
         <DialogContent title="New Borrowing">
           <form onSubmit={(e) => { e.preventDefault(); borrowForm.handleSubmit(onBorrowSubmit)(e); }} className="space-y-4">
             <div><label className="block text-sm font-medium mb-1">Book Copy</label><Controller name="bookCopyId" control={borrowForm.control} render={({ field }) => (<Select options={copyItems.filter((c: BookCopy) => c.status === 'AVAILABLE').map((c: BookCopy) => ({ value: String(c.id), label: `${c.bookTitle || 'Unknown'} (${c.barcode})` }))} {...field} />)} /></div>
-            {borrowForm.formState.errors.bookCopyId && <p className="text-sm text-red-600">{borrowForm.formState.errors.bookCopyId.message}</p>}
+            {borrowForm.formState.errors.bookCopyId && <p className="text-sm text-destructive">{borrowForm.formState.errors.bookCopyId.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Member</label><Controller name="memberId" control={borrowForm.control} render={({ field }) => (<Select options={memberItems.map((m: LibraryMember) => ({ value: String(m.id), label: `${m.membershipNumber} (${m.memberType})` }))} {...field} />)} /></div>
-            {borrowForm.formState.errors.memberId && <p className="text-sm text-red-600">{borrowForm.formState.errors.memberId.message}</p>}
+            {borrowForm.formState.errors.memberId && <p className="text-sm text-destructive">{borrowForm.formState.errors.memberId.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Borrow Date</label><Input type="date" {...borrowForm.register('borrowDate')} /></div>
-            {borrowForm.formState.errors.borrowDate && <p className="text-sm text-red-600">{borrowForm.formState.errors.borrowDate.message}</p>}
+            {borrowForm.formState.errors.borrowDate && <p className="text-sm text-destructive">{borrowForm.formState.errors.borrowDate.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Due Date</label><Input type="date" {...borrowForm.register('dueDate')} /></div>
-            {borrowForm.formState.errors.dueDate && <p className="text-sm text-red-600">{borrowForm.formState.errors.dueDate.message}</p>}
+            {borrowForm.formState.errors.dueDate && <p className="text-sm text-destructive">{borrowForm.formState.errors.dueDate.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Remarks</label><Input {...borrowForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => { setBorrowOpen(false); borrowForm.reset({ bookCopyId: 0, memberId: 0, borrowDate: new Date().toISOString().split('T')[0], dueDate: '', remarks: '' }); }}>Cancel</Button><Button type="submit" disabled={createBorrowMutation.isPending}>Borrow</Button></div>
           </form>
@@ -376,10 +377,47 @@ export function ManagerLibraryPage() {
       <Dialog open={fineOpen} onOpenChange={(o) => { if (!o) { setFineOpen(false); fineForm.reset({ borrowingId: 0, fineAmount: 0, fineType: 'OVERDUE', remarks: '' }); } }}>
         <DialogContent title="Add Fine">
           <form onSubmit={(e) => { e.preventDefault(); fineForm.handleSubmit(onFineSubmit)(e); }} className="space-y-4">
-            <div><label className="block text-sm font-medium mb-1">Borrowing ID</label><Input type="number" {...fineForm.register('borrowingId')} /></div>
-            {fineForm.formState.errors.borrowingId && <p className="text-sm text-red-600">{fineForm.formState.errors.borrowingId.message}</p>}
+            <div>
+              <Controller
+                name="borrowingId"
+                control={fineForm.control}
+                render={({ field }) => {
+                  const options = (borrowingItems || [])
+                    .filter((b: any) => b.status === 'BORROWED' || b.status === 'RETURNED' || b.status === 'OVERDUE')
+                    .map((b: any) => {
+                      const member = b.memberName || b.membershipNumber || '-';
+                      const book = b.bookTitle || '-';
+                      const due = b.dueDate ? `Due: ${b.dueDate}` : '';
+                      const label = `${member} – ${book}${due ? ` (${due})` : ''}`;
+                      return { value: String(b.id), label };
+                    });
+                  const selectedBorrowing = (borrowingItems || []).find((b: any) => String(b.id) === String(field.value));
+                  return (
+                    <>
+                      <SearchableSelect
+                        label="Borrowing Record"
+                        value={String(field.value || '')}
+                        options={options}
+                        placeholder="Select borrowing record"
+                        onChange={(e) => field.onChange(Number(e.target.value))}
+                        emptyMessage="No borrowing records found"
+                      />
+                      {selectedBorrowing && (
+                        <div className="mt-2 rounded-md bg-muted p-2 text-xs text-muted-foreground">
+                          <div><span className="font-medium text-foreground">Member:</span> {selectedBorrowing.memberName || selectedBorrowing.membershipNumber || '-'}</div>
+                          <div><span className="font-medium text-foreground">Book:</span> {selectedBorrowing.bookTitle || '-'}</div>
+                          {selectedBorrowing.borrowDate && <div><span className="font-medium text-foreground">Borrowed:</span> {selectedBorrowing.borrowDate}</div>}
+                          {selectedBorrowing.dueDate && <div><span className="font-medium text-foreground">Due:</span> {selectedBorrowing.dueDate}</div>}
+                        </div>
+                      )}
+                    </>
+                  );
+                }}
+              />
+            </div>
+            {fineForm.formState.errors.borrowingId && <p className="text-sm text-destructive">{fineForm.formState.errors.borrowingId.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Fine Amount</label><Input type="number" step="0.01" {...fineForm.register('fineAmount')} /></div>
-            {fineForm.formState.errors.fineAmount && <p className="text-sm text-red-600">{fineForm.formState.errors.fineAmount.message}</p>}
+            {fineForm.formState.errors.fineAmount && <p className="text-sm text-destructive">{fineForm.formState.errors.fineAmount.message}</p>}
             <div><label className="block text-sm font-medium mb-1">Fine Type</label><Controller name="fineType" control={fineForm.control} render={({ field }) => (<Select options={[{ value: 'OVERDUE', label: 'Overdue' }, { value: 'DAMAGE', label: 'Damage' }, { value: 'LOST', label: 'Lost' }]} {...field} />)} /></div>
             <div><label className="block text-sm font-medium mb-1">Remarks</label><Input {...fineForm.register('remarks')} /></div>
             <div className="flex justify-end gap-2 pt-2"><Button type="button" variant="secondary" onClick={() => { setFineOpen(false); fineForm.reset({ borrowingId: 0, fineAmount: 0, fineType: 'OVERDUE', remarks: '' }); }}>Cancel</Button><Button type="submit" disabled={createFineMutation.isPending}>Save</Button></div>
@@ -400,4 +438,6 @@ export function ManagerLibraryPage() {
     </div>
   );
 }
+
+
 

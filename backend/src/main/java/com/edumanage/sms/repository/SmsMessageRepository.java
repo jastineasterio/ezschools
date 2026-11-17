@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -17,4 +18,5 @@ public interface SmsMessageRepository extends JpaRepository<SmsMessage, Long> {
     Optional<SmsMessage> findBySchoolIdAndId(Long schoolId, Long id);
     Page<SmsMessage> findBySchoolIdAndTemplateId(Long schoolId, Long templateId, Pageable pageable);
     long countBySchoolIdAndStatus(Long schoolId, String status);
+    long countBySchoolIdAndCreatedAtBetween(Long schoolId, LocalDateTime start, LocalDateTime end);
 }

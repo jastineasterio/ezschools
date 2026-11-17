@@ -32,7 +32,7 @@ export function TabsList({ className, ...props }: TabsListProps) {
   return (
     <div
       role="tablist"
-      className={cn('inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground', className)}
+      className={cn('inline-flex h-10 items-center justify-center rounded-xl bg-muted p-1 text-muted-foreground', className)}
       {...props}
     />
   );

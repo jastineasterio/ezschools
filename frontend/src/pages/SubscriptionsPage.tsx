@@ -196,7 +196,7 @@ export function SubscriptionsPage() {
       <div className="space-y-6">
         <h1 className="text-3xl font-bold">Subscriptions</h1>
         <Card className="p-6">
-          <div className="flex items-center gap-2 text-red-600">
+          <div className="flex items-center gap-2 text-destructive">
             <AlertCircle className="h-5 w-5" />
             <p>Failed to load subscriptions. Please try again later.</p>
           </div>
@@ -208,7 +208,7 @@ export function SubscriptionsPage() {
   return (
     <div className="space-y-6">
       {success && (
-        <div role="status" className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+        <div role="status" className="rounded-lg border border-green-200/50 bg-green-50/50 px-4 py-3 text-sm text-green-900 dark:border-green-900/30 dark:bg-green-900/20 dark:text-green-400">
           {success}
         </div>
       )}
@@ -275,7 +275,7 @@ export function SubscriptionsPage() {
         >
           <DialogClose onClick={() => closeManagement(false)} />
           {error && (
-            <div role="alert" className="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            <div role="alert" className="mb-4 rounded-lg border border-red-200/50 bg-red-50/50 px-4 py-3 text-sm text-red-900 dark:border-red-900/30 dark:bg-red-900/20 dark:text-red-400">
               {error}
             </div>
           )}
@@ -314,7 +314,7 @@ export function SubscriptionsPage() {
                 {schoolsQuery.isLoading ? (
                   <Skeleton className="h-10 w-full" />
                 ) : schoolsQuery.isError ? (
-                  <div className="flex items-center justify-between gap-2 text-sm text-red-600">
+                  <div className="flex items-center justify-between gap-2 text-sm text-destructive">
                     <span>{getErrorMessage(schoolsQuery.error, 'Could not load schools.')}</span>
                     <Button type="button" variant="outline" size="sm" onClick={() => schoolsQuery.refetch()}>Retry</Button>
                   </div>
@@ -350,7 +350,7 @@ export function SubscriptionsPage() {
                       : ''}
                   </p>
                   {hasUnexpiredSubscription && (
-                    <p className="mt-2 text-red-700">
+                    <p className="mt-2 text-destructive">
                       This paid subscription cannot be replaced before its end date.
                     </p>
                   )}
@@ -361,7 +361,7 @@ export function SubscriptionsPage() {
                 {packagesQuery.isLoading ? (
                   <Skeleton className="h-10 w-full" />
                 ) : packagesQuery.isError ? (
-                  <div className="flex items-center justify-between gap-2 text-sm text-red-600">
+                  <div className="flex items-center justify-between gap-2 text-sm text-destructive">
                     <span>{getErrorMessage(packagesQuery.error, 'Could not load packages.')}</span>
                     <Button type="button" variant="outline" size="sm" onClick={() => packagesQuery.refetch()}>Retry</Button>
                   </div>

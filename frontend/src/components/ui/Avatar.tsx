@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { cva, type VariantProps } from 'class-variance-authority';
+import * as React from 'react';
 
 const avatarVariants = cva(
   'relative flex h-10 w-10 shrink-0 overflow-hidden rounded-full',
@@ -30,7 +31,7 @@ export function Avatar({ className, size, src, alt, fallback, ...props }: Avatar
       {src ? (
         <img src={src} alt={alt || 'Avatar'} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center bg-muted text-muted-foreground text-sm font-medium">
+        <div className="flex h-full w-full items-center justify-center bg-primary text-primary-foreground text-sm font-medium">
           {fallback || '?'}
         </div>
       )}

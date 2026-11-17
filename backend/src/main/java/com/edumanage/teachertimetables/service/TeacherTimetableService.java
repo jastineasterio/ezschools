@@ -30,8 +30,7 @@ public class TeacherTimetableService {
     @Transactional(readOnly = true)
     public List<TeacherTimetableDto> listForSchool() {
         Long schoolId = TenantContext.requireTenantId();
-        return timetableRepository.findBySchoolIdAndDeletedAtIsNullOrderByDayOfWeekAscStartTimeAsc(schoolId)
-                .stream().map(this::toDto).toList();
+        return timetableRepository.findDtoBySchoolId(schoolId);
     }
 
     @Transactional
@@ -72,10 +71,6 @@ public class TeacherTimetableService {
         }
         timetable.setDeletedAt(java.time.LocalDateTime.now());
         timetableRepository.save(timetable);
-    }
-
-    private TeacherTimetableDto toDto(TeacherTimetable timetable) {
-        return toDto(timetable, timetable.getTeacherAssignment());
     }
 
     private TeacherTimetableDto toDto(TeacherTimetable timetable, TeacherAssignment assignment) {

@@ -4,82 +4,119 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* EduManage premium design system - Light mode */
+    --background: 210 40% 98%;            /* #F1F5F9 soft blue-gray */
+    --sidebar-background: 0 0% 100%;      /* #FFFFFF */
+    --header-background: 0 0% 100%;       /* #FFFFFF */
+    --card: 0 0% 100%;                    /* #FFFFFF */
+    --card-foreground: 222 47% 11%;       /* #0F172A */
+    --foreground: 222 47% 11%;            /* #0F172A dark navy text */
+    --muted-foreground: 215 16% 47%;      /* #64748B */
+    --primary: 221 83% 53%;               /* #2563EB professional blue */
+    --primary-foreground: 210 40% 98%;    /* #FFFFFF */
+    --primary-hover: 221 83% 43%;         /* #1D4ED8 */
+    --primary-light: 221 83% 92%;         /* soft blue tint */
+    --secondary: 210 40% 96.1%;           /* #F1F5F9 */
+    --secondary-foreground: 222 47% 11%;  /* #0F172A */
+    --muted: 210 40% 96.1%;               /* #F1F5F9 */
     --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    --accent-foreground: 222 47% 11%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
+    --border: 214 32% 91%;                /* #E2E8F0 */
+    --border-soft: 214 32% 94%;
+    --input: 0 0% 100%;                   /* #FFFFFF */
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+
+    /* Table design tokens - Light mode */
+    --table-header: 210 40% 96.1%;        /* #F1F5F9 */
+    --table-row: 0 0% 100%;               /* #FFFFFF */
+    --table-hover: 210 40% 98%;           /* #F8FAFC */
+
+    /* School branding defaults - light mode (brand accents only) */
+    --school-primary: 221 83% 53%;
+    --school-primary-foreground: 210 40% 98%;
+    --school-secondary: 210 40% 96.1%;
+    --school-secondary-foreground: 222 47% 11%;
+    --school-accent: 210 40% 96.1%;
+    --school-accent-foreground: 222 47% 11%;
+    --school-background: 210 40% 98%;
+    --school-text: 222 47% 11%;
+    --school-card: 0 0% 100%;
+    --school-card-foreground: 222 47% 11%;
+    --school-sidebar-background: 0 0% 100%;
+    --school-sidebar-text: 222 47% 11%;
+    --school-active-nav-background: 221 83% 53%;
+    --school-active-nav-text: 210 40% 98%;
+    --school-border: 214 32% 91%;
+    --school-muted: 210 40% 96.1%;
+    --school-muted-foreground: 215 16% 47%;
+    --school-input: 0 0% 100%;
+    --school-ring: 221 83% 53%;
   }
 
   .dark {
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
-    --card: 217.2 32.6% 17.5%;
-    --card-foreground: 210 40% 98%;
-    --popover: 217.2 32.6% 17.5%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    /* EduManage premium design system - Dark mode */
+    --background: 222 47% 11%;            /* #0F172A */
+    --sidebar-background: 221 39% 11%;    /* #111827 */
+    --header-background: 221 39% 11%;     /* #111827 */
+    --card: 217 33% 17%;                  /* #1E293B */
+    --card-foreground: 210 40% 98%;       /* #F8FAFC */
+    --foreground: 210 40% 98%;            /* #F8FAFC */
+    --muted-foreground: 213 27% 84%;      /* #CBD5E1 */
+    --primary: 217 91% 60%;               /* #3B82F6 */
+    --primary-foreground: 210 40% 98%;    /* #FFFFFF */
+    --primary-hover: 203 93% 69%;         /* #60A5FA */
+    --primary-light: 217 91% 25%;
+    --secondary: 217 33% 17%;             /* #1E293B */
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --muted: 217 33% 17%;
+    --accent: 217 33% 17%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 215 25% 27%;
-    --input: 215 25% 27%;
-    --ring: 224.3 76.3% 48%;
+    --border: 215 25% 27%;                /* #334155 */
+    --border-soft: 215 25% 32%;
+    --input: 222 47% 11%;                 /* #0F172A */
+    --ring: 217 91% 60%;
+
+    /* Table design tokens - Dark mode */
+    --table-header: 217 30% 22%;          /* #273449 */
+    --table-row: 217 33% 17%;             /* #1E293B */
+    --table-hover: 217 27% 22%;           /* #293548 */
+
+    /* School branding defaults - dark mode (brand accents only) */
+    --school-primary: 217 91% 60%;
+    --school-primary-foreground: 210 40% 98%;
+    --school-secondary: 217 33% 17%;
+    --school-secondary-foreground: 210 40% 98%;
+    --school-accent: 217 33% 17%;
+    --school-accent-foreground: 210 40% 98%;
+    --school-background: 222 47% 11%;
+    --school-text: 210 40% 98%;
+    --school-card: 217 33% 17%;
+    --school-card-foreground: 210 40% 98%;
+    --school-sidebar-background: 221 39% 11%;
+    --school-sidebar-text: 210 40% 98%;
+    --school-active-nav-background: 217 91% 60%;
+    --school-active-nav-text: 210 40% 98%;
+    --school-border: 215 25% 27%;
+    --school-muted: 217 33% 17%;
+    --school-muted-foreground: 213 27% 84%;
+    --school-input: 222 47% 11%;
+    --school-ring: 217 91% 60%;
   }
 
-  .theme-primary {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
+  /* Recharts dark mode overrides */
   .dark .recharts-cartesian-axis-tick text,
   .dark .recharts-cartesian-axis-tick-value {
     fill: hsl(var(--muted-foreground));
@@ -96,14 +133,41 @@
   .dark .recharts-tooltip text {
     fill: hsl(var(--card-foreground));
   }
+  .dark .recharts-cartesian-grid line {
+    stroke: hsl(var(--border));
+    stroke-opacity: 0.5;
+  }
+  .recharts-cartesian-grid line {
+    stroke: hsl(var(--border));
+    stroke-opacity: 0.4;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.25);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground) / 0.4);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+  }
 }
 
 @layer components {
   .btn {
-    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50;
+    @apply inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:bg-muted disabled:text-muted-foreground;
   }
   .btn-primary {
-    @apply btn bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2;
+    @apply btn bg-primary text-primary-foreground hover:bg-primary-hover h-10 px-4 py-2 shadow-sm;
   }
   .btn-secondary {
     @apply btn bg-secondary text-secondary-foreground hover:bg-secondary/80 h-10 px-4 py-2;
@@ -123,13 +187,74 @@
   .btn-lg {
     @apply h-11 rounded-md px-8;
   }
-  .card {
-    @apply rounded-lg border bg-card text-card-foreground shadow-sm;
+  .btn-icon {
+    @apply btn h-10 w-10;
   }
+
+  .card {
+    @apply rounded-xl border bg-card text-card-foreground shadow-sm;
+  }
+  .card-hover {
+    @apply card transition-all hover:border-primary/30 hover:shadow-md;
+  }
+
   .input {
-    @apply flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
+    @apply flex h-10 w-full rounded-md border border-input bg-input px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50;
   }
   .label {
-    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70;
+    @apply text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-foreground;
+  }
+
+  /* Page shell */
+  .page {
+    @apply mx-auto max-w-7xl px-4 sm:px-6 lg:px-8;
+  }
+  .page-header {
+    @apply mb-6 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3;
+  }
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-foreground;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-muted-foreground;
+  }
+  .section {
+    @apply mb-8;
+  }
+  .section-header {
+    @apply mb-4 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2;
+  }
+  .section-title {
+    @apply text-base font-semibold text-foreground tracking-tight;
+  }
+  .section-description {
+    @apply mt-0.5 text-sm text-muted-foreground;
+  }
+
+  /* Stat card - premium KPI */
+  .stat-card {
+    @apply card p-5 overflow-hidden relative;
+  }
+  .stat-card-label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted-foreground;
+  }
+  .stat-card-value {
+    @apply mt-1 text-2xl font-bold tabular-nums text-foreground;
+  }
+  .stat-card-hint {
+    @apply mt-1 text-xs text-muted-foreground;
+  }
+  .stat-card-icon {
+    @apply absolute right-5 top-5 h-8 w-8 rounded-lg flex items-center justify-center bg-primary/10 text-primary;
+  }
+
+  /* Section card wrapper */
+  .section-card {
+    @apply card p-6;
+  }
+
+  /* Badge dot / status */
+  .status-dot {
+    @apply inline-block h-2 w-2 rounded-full;
   }
 }

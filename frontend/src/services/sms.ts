@@ -1,7 +1,9 @@
 import { api } from './api';
-import type { SmsConfiguration, CreateSmsConfigurationRequest } from '@/types/sms';
+import type { AxiosRequestConfig } from 'axios';
+import type { SmsConfiguration, CreateSmsConfigurationRequest, UpdateSmsConfigurationRequest } from '@/types/sms';
 import type { SmsMessage, CreateSmsMessageRequest } from '@/types/sms';
 import type { SmsTemplate, CreateSmsTemplateRequest } from '@/types/sms';
+import type { SmsTestResult, CreateSmsPurchaseRequest, RetryPurchaseRequest } from '@/types/sms';
 import type { PageResponse } from '@/types/api';
 
 export async function getSmsConfigurations(page = 0, size = 20): Promise<PageResponse<SmsConfiguration>> {
@@ -24,13 +26,29 @@ export async function createSmsConfiguration(payload: CreateSmsConfigurationRequ
   return data.data;
 }
 
-export async function updateSmsConfiguration(id: number, payload: CreateSmsConfigurationRequest) {
+export async function fetchSenderIds(apiKey: string): Promise<string[]> {
+  const { data } = await api.post(
+    '/platform/sms/configurations/sender-ids',
+    { apiKey },
+    { skipAuthRetry: true } as unknown as AxiosRequestConfig,
+  );
+  return data.data;
+}
+
+export async function updateSmsConfiguration(id: number, payload: UpdateSmsConfigurationRequest) {
   const { data } = await api.put(`/platform/sms/configurations/${id}`, payload);
   return data.data;
 }
 
 export async function deleteSmsConfiguration(id: number) {
   const { data } = await api.delete(`/platform/sms/configurations/${id}`);
+  return data;
+}
+
+export async function testSmsConfiguration(id: number, recipient?: string): Promise<{ data: SmsTestResult }> {
+  const { data } = await api.post<{ data: SmsTestResult }>(`/platform/sms/configurations/${id}/test`, {
+    recipient: recipient || '',
+  });
   return data;
 }
 
@@ -47,6 +65,11 @@ export async function sendSms(payload: CreateSmsMessageRequest) {
 export async function sendBulkSms(payload: CreateSmsMessageRequest) {
   const { data } = await api.post('/school/sms/messages/bulk', payload);
   return data.data;
+}
+
+export async function checkSmsMessageStatus(messageId: number) {
+  const { data } = await api.get(`/school/sms/messages/${messageId}/status`);
+  return data;
 }
 
 export async function getSmsTemplates(page = 0, size = 20): Promise<PageResponse<SmsTemplate>> {
@@ -72,4 +95,24 @@ export async function updateSmsTemplate(id: number, payload: CreateSmsTemplateRe
 export async function deleteSmsTemplate(id: number) {
   const { data } = await api.delete(`/school/sms/templates/${id}`);
   return data;
+}
+
+export async function createSmsPurchase(schoolId: number, payload: CreateSmsPurchaseRequest) {
+  const { data } = await api.post(`/platform/sms/purchases?schoolId=${schoolId}`, payload);
+  return data.data;
+}
+
+export async function getSmsPurchases(schoolId: number, status = 'ALL', page = 0, limit = 20) {
+  const { data } = await api.get(
+    `/platform/sms/purchases?schoolId=${schoolId}&status=${encodeURIComponent(status)}&page=${page}&limit=${limit}`,
+  );
+  return data.data;
+}
+
+export async function retrySmsPurchase(schoolId: number, purchaseId: string, payload: RetryPurchaseRequest) {
+  const { data } = await api.post(
+    `/platform/sms/purchases/${encodeURIComponent(purchaseId)}/pay?schoolId=${schoolId}`,
+    payload,
+  );
+  return data.data;
 }

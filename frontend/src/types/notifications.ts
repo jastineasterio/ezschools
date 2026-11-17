@@ -42,8 +42,9 @@ export interface CommunicationCampaign {
   recipientGroup: string;
   intendedCount: number;
   excludedCount: number;
-  acceptedCount: number;
+  sentCount: number;
   failedCount: number;
+  deliveredCount: number;
   status: string;
   createdAt: string;
 }
@@ -56,8 +57,15 @@ export interface CommunicationDelivery {
   status: string;
   providerMessageId: string | null;
   failureCode: string | null;
+  errorMessage: string | null;
+  deliveryStatus: string | null;
+  sentAt: string | null;
+  deliveredAt: string | null;
+  batchId: string | null;
   attemptCount: number;
   lastAttemptAt: string | null;
+  recipientName: string | null;
+  recipientPhone: string | null;
 }
 
 export interface PlatformNotificationHistoryEntry {

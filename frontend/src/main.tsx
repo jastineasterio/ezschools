@@ -14,11 +14,11 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <AuthProvider>
-          <BrandingProvider>
-            <ThemeProvider>
+          <ThemeProvider>
+            <BrandingProvider>
               <App />
-            </ThemeProvider>
-          </BrandingProvider>
+            </BrandingProvider>
+          </ThemeProvider>
         </AuthProvider>
       </QueryClientProvider>
     </BrowserRouter>

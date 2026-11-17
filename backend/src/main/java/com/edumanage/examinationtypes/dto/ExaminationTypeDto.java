@@ -17,6 +17,7 @@ public class ExaminationTypeDto {
     private String name;
     private String code;
     private String description;
+    private Boolean active;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

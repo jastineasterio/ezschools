@@ -6,6 +6,7 @@ import com.edumanage.exception.ResourceNotFoundException;
 import com.edumanage.studentprofiles.dto.CreateStudentProfileRequest;
 import com.edumanage.studentprofiles.dto.StudentProfileDto;
 import com.edumanage.studentprofiles.entity.StudentProfile;
+import com.edumanage.studentprofiles.repository.StudentProfileRepository;
 import com.edumanage.schools.entity.School;
 import com.edumanage.schools.repository.SchoolRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;

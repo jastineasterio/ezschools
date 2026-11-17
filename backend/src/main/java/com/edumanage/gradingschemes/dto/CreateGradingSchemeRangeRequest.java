@@ -11,7 +11,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class CreateGradingSchemeRangeRequest {
 
-    @NotNull(message = "Scheme ID is required")
+    // schemeId is supplied via the URL path variable; the service sets it from there.
     private Long schemeId;
 
     @NotBlank(message = "Grade is required")
