@@ -105,7 +105,7 @@ describe('PlatformBrandingPage', () => {
 
     await waitFor(() => expect(putSpy).toHaveBeenCalled());
     const [url, body] = putSpy.mock.calls[0];
-    expect(String(url)).toContain(`/api/platform/schools/${schoolId}/branding`);
+    expect(String(url)).toContain(`/platform/schools/${schoolId}/branding`);
     expect((body as any).primaryColor).toBe('#ff0000');
 
     await waitFor(() => screen.getByText('Branding saved successfully.'));
@@ -125,7 +125,7 @@ describe('PlatformBrandingPage', () => {
 
     await waitFor(() => expect(postSpy).toHaveBeenCalled());
     const [url] = postSpy.mock.calls[0];
-    expect(String(url)).toContain(`/api/platform/schools/${schoolId}/branding/reset`);
+    expect(String(url)).toContain(`/platform/schools/${schoolId}/branding/reset`);
   });
 
   test('removes logo via DELETE when a logo exists', async () => {
@@ -140,7 +140,7 @@ describe('PlatformBrandingPage', () => {
 
     await waitFor(() => expect(deleteSpy).toHaveBeenCalled());
     const [url] = deleteSpy.mock.calls[0];
-    expect(String(url)).toContain(`/api/platform/schools/${schoolId}/branding/logo`);
+    expect(String(url)).toContain(`/platform/schools/${schoolId}/branding/logo`);
   });
 
   test('uploads logo via POST when a file is selected', async () => {
@@ -157,7 +157,7 @@ describe('PlatformBrandingPage', () => {
 
     await waitFor(() => expect(postSpy).toHaveBeenCalled());
     const [url, body] = postSpy.mock.calls[0];
-    expect(String(url)).toContain(`/api/platform/schools/${schoolId}/branding/logo`);
+    expect(String(url)).toContain(`/platform/schools/${schoolId}/branding/logo`);
     expect(body).toBeInstanceOf(FormData);
   });
 });

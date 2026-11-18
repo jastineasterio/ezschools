@@ -1,5 +1,5 @@
 import { api, unwrapApiResponse } from './api';
-import type { ApiResponse, PaginatedResponse } from '@/types/api';
+import type { ApiResponse, PaginatedResponse, PageResponse, SchoolResponse } from '@/types/api';
 import type {
   AccountantDashboard,
   HodDashboard,
@@ -13,6 +13,12 @@ import type { PlatformDashboardResponse } from '@/types/api';
 export async function getPlatformDashboard(): Promise<PlatformDashboardResponse> {
   return unwrapApiResponse(
     api.get<ApiResponse<PlatformDashboardResponse>>('/platform/dashboard')
+  );
+}
+
+export async function getPlatformSchools(page = 0, size = 10): Promise<PageResponse<SchoolResponse>> {
+  return unwrapApiResponse<PageResponse<SchoolResponse>>(
+    api.get<ApiResponse<PageResponse<SchoolResponse>>>('/platform/schools', { params: { page, size } })
   );
 }
 

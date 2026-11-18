@@ -18,8 +18,10 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -125,11 +127,26 @@ public class SubscriptionService {
 
         var savedSubscription = subscriptionRepository.save(subscription);
 
-        auditLogService.logForSchool("SUBSCRIPTION_ASSIGN", "Subscription", savedSubscription.getId(),
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("schoolId", schoolId);
+        before.put("previousSubscription", previousDetails);
+
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("subscriptionId", savedSubscription.getId());
+        after.put("schoolId", schoolId);
+        after.put("status", savedSubscription.getStatus());
+        after.put("packageId", pkg.getId());
+        after.put("packageName", pkg.getName());
+        after.put("price", savedSubscription.getPrice());
+        after.put("billingPeriod", savedSubscription.getBillingPeriod());
+        after.put("startDate", savedSubscription.getStartDate());
+        after.put("endDate", savedSubscription.getEndDate());
+
+        auditLogService.logWithResult("SUBSCRIPTION_ASSIGN", "Subscription", savedSubscription.getId(),
                 "School " + school.getName() + ": transitioned from " + previousDetails
                         + " to ACTIVE package " + pkg.getName() + "; payment PENDING; amount "
                         + pkg.getPrice() + " TZS for " + pkg.getBillingPeriod() + ", starts " + selectedStartDate,
-                null, null, null, schoolId);
+                null, null, null, "SUCCESS", before, after, schoolId);
 
         return mapToDto(savedSubscription);
     }
@@ -175,11 +192,16 @@ public class SubscriptionService {
         subscription.setStatus("ACTIVE");
         subscriptionRepository.save(subscription);
 
-        auditLogService.logForSchool("SUBSCRIPTION_ACTIVATE", "Subscription", subscription.getId(),
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("status", previousStatus);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", "ACTIVE");
+
+        auditLogService.logWithResult("SUBSCRIPTION_ACTIVATE", "Subscription", subscription.getId(),
                 "School " + subscription.getSchoolId() + ": changed subscription " + subscription.getId()
                         + " from " + previousStatus + " to ACTIVE; payment remains "
                         + subscription.getPaymentStatus() + "; package " + packageName(subscription.getPackageId()),
-                null, null, null, subscription.getSchoolId());
+                null, null, null, "SUCCESS", before, after, subscription.getSchoolId());
 
         return mapToDto(subscription);
     }
@@ -193,10 +215,15 @@ public class SubscriptionService {
         subscription.setStatus("SUSPENDED");
         subscriptionRepository.save(subscription);
 
-        auditLogService.logForSchool("SUBSCRIPTION_SUSPEND", "Subscription", subscription.getId(),
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("status", previousStatus);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", "SUSPENDED");
+
+        auditLogService.logWithResult("SUBSCRIPTION_SUSPEND", "Subscription", subscription.getId(),
                 "School " + subscription.getSchoolId() + ": changed subscription " + subscription.getId()
                         + " from " + previousStatus + " to SUSPENDED; package " + packageName(subscription.getPackageId()),
-                null, null, null, subscription.getSchoolId());
+                null, null, null, "SUCCESS", before, after, subscription.getSchoolId());
 
         return mapToDto(subscription);
     }
@@ -212,11 +239,18 @@ public class SubscriptionService {
         subscription.setCancellationReason(reason);
         subscriptionRepository.save(subscription);
 
-        auditLogService.logForSchool("SUBSCRIPTION_CANCEL", "Subscription", subscription.getId(),
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("status", previousStatus);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("status", "CANCELLED");
+        after.put("cancelledAt", subscription.getCancelledAt());
+        after.put("cancellationReason", reason);
+
+        auditLogService.logWithResult("SUBSCRIPTION_CANCEL", "Subscription", subscription.getId(),
                 "School " + subscription.getSchoolId() + ": changed subscription " + subscription.getId()
                         + " from " + previousStatus + " to CANCELLED; package "
                         + packageName(subscription.getPackageId()) + "; reason " + reason,
-                null, null, null, subscription.getSchoolId());
+                null, null, null, "SUCCESS", before, after, subscription.getSchoolId());
 
         return mapToDto(subscription);
     }

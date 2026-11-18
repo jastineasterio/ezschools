@@ -70,7 +70,9 @@ class PostgresOptionalSearchParameterTest {
         assertDoesNotThrow(() -> departmentRepository.search(2L, null, pageable));
         assertDoesNotThrow(() -> subjectRepository.search(2L, null, pageable));
         assertDoesNotThrow(() -> userRepository.findSchoolUsers(2L, null, null, null, pageable));
-        assertDoesNotThrow(() -> auditLogRepository.findFilteredBySchoolId(2L, null, null, null, pageable));
-        assertDoesNotThrow(() -> auditLogRepository.findFiltered(null, null, null, pageable));
+        assertDoesNotThrow(() -> auditLogRepository.findFilteredBySchoolId(2L, null, null, null, null, null, null, null,
+                pageable));
+        assertDoesNotThrow(() -> auditLogRepository.findFiltered(null, null, null, null, null, null, null, null,
+                pageable));
     }
 }

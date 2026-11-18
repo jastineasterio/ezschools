@@ -34,8 +34,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -189,9 +191,17 @@ public PageResponse<UserDto> listAllUsers(Pageable pageable) {
 
         userRepository.save(user);
 
-        auditLogService.log("USER_UPDATE", "User", user.getId(),
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("email", user.getEmail());
+        before.put("firstName", user.getFirstName());
+        before.put("lastName", user.getLastName());
+        before.put("phone", user.getPhone());
+        before.put("isActive", user.isActive());
+
+        auditLogService.logWithResult("USER_UPDATE", "User", user.getId(),
                 "Updated user " + user.getEmail(),
-                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null);
+                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null,
+                "SUCCESS", before, null, user.getSchoolId());
 
         return mapToDto(user);
     }

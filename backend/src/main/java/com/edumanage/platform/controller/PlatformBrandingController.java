@@ -49,12 +49,21 @@ public class PlatformBrandingController {
                                                                      @RequestParam("file") MultipartFile file,
                                                                      HttpServletRequest request) {
         requireSchool(schoolId);
-        // Validates type/size and stores under a safe, random name.
-        String fileName = fileStorageService.storeLogo(file);
-        String logoUrl = buildLogoUrl(request, fileName);
-        var branding = brandingService.uploadLogo(schoolId, logoUrl);
-        return ResponseEntity.ok(new ApiResponse<>(true, "Logo uploaded", branding, null,
-                LocalDateTime.now(), "/api/platform/schools/" + schoolId + "/branding/logo"));
+        // Store the file first, but remove it if database persistence fails so no
+        // orphaned logo file is left behind.
+        String fileName = null;
+        try {
+            fileName = fileStorageService.storeLogo(file);
+            String logoUrl = buildLogoUrl(request, fileName);
+            var branding = brandingService.uploadLogo(schoolId, logoUrl);
+            return ResponseEntity.ok(new ApiResponse<>(true, "Logo uploaded", branding, null,
+                    LocalDateTime.now(), "/api/platform/schools/" + schoolId + "/branding/logo"));
+        } catch (Exception ex) {
+            if (fileName != null) {
+                fileStorageService.deleteLogo(fileName);
+            }
+            throw ex;
+        }
     }
 
     @DeleteMapping("/logo")

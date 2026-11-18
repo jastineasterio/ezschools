@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
-import { CheckCircle2, Mail, MessageSquare, ShieldAlert } from 'lucide-react';
+import { CheckCircle2, ShieldAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
@@ -24,11 +24,35 @@ function requestError(error: unknown): string {
   return 'The request could not be completed.';
 }
 
-function ProviderStatus({ configured, enabled }: { configured: boolean; enabled: boolean }) {
-  if (!configured) return <Badge variant="destructive">Not configured</Badge>;
-  return enabled
-    ? <Badge variant="success">Enabled</Badge>
-    : <Badge variant="secondary">Disabled</Badge>;
+function ProviderStatus({
+  label,
+  configured,
+  channelEnabled,
+  notConfiguredHint,
+}: {
+  label: string;
+  configured: boolean;
+  channelEnabled: boolean;
+  notConfiguredHint: string;
+}) {
+  return (
+    <div className="rounded-md border p-3">
+      <div className="flex items-center justify-between gap-2 mb-1">
+        <span className="text-sm font-medium">{label}</span>
+        <Badge variant={configured ? 'success' : 'destructive'}>
+          {configured ? 'Configured' : 'Not configured'}
+        </Badge>
+      </div>
+      {configured ? (
+        <p className="text-xs text-muted-foreground">
+          Provider credentials are present. Channel is {channelEnabled ? 'enabled' : 'disabled'} globally;
+          use the toggles above to change availability.
+        </p>
+      ) : (
+        <p className="text-xs text-muted-foreground">{notConfiguredHint}</p>
+      )}
+    </div>
+  );
 }
 
 function CampaignHistory({ campaign }: { campaign: CommunicationCampaign }) {
@@ -67,6 +91,7 @@ export function PlatformNotificationManagementPage() {
   const testMutation = useMutation({ mutationFn: sendTestEmail });
 
   const config = configQuery.data;
+  const emailNotConfigured = config != null && !config.emailConfigured;
   const updateFlag = (field: keyof Pick<NotificationChannels, 'notificationsEnabled' | 'smsEnabled' | 'emailEnabled'>,
     checked: boolean) => {
     if (!config) return;
@@ -104,13 +129,26 @@ export function PlatformNotificationManagementPage() {
           <p className="text-sm text-destructive">{requestError(configQuery.error)}</p>
         )}
         {config && (
-          <div className="flex flex-wrap gap-4 text-sm">
-            <span className="flex items-center gap-2">
-              <MessageSquare className="h-4 w-4" /> DARSMS <ProviderStatus configured={config.smsConfigured} enabled={config.smsEnabled} />
-            </span>
-            <span className="flex items-center gap-2">
-              <Mail className="h-4 w-4" /> Gmail SMTP <ProviderStatus configured={config.emailConfigured} enabled={config.emailEnabled} />
-            </span>
+          <div className="grid gap-4 md:grid-cols-2">
+            <ProviderStatus
+              label="DARSMS (SMS)"
+              configured={config.smsConfigured}
+              channelEnabled={config.smsEnabled}
+              notConfiguredHint={
+                'DARSMS is not configured. SMS works through a school’s active DARSMS credentials ' +
+                '(encrypted API key + Sender ID) or the global DARSMS_API_KEY / DARSMS_SENDER_ID ' +
+                'environment variables.'
+              }
+            />
+            <ProviderStatus
+              label="Gmail SMTP (Email)"
+              configured={config.emailConfigured}
+              channelEnabled={config.emailEnabled}
+              notConfiguredHint={
+                'Gmail SMTP is not configured. Set SMTP_USERNAME, SMTP_APP_PASSWORD and SMTP_FROM to ' +
+                'enable email sending and the test email action.'
+              }
+            />
           </div>
         )}
         {configMutation.isError && <p role="alert" className="text-sm text-destructive">{requestError(configMutation.error)}</p>}
@@ -165,12 +203,17 @@ export function PlatformNotificationManagementPage() {
         <div className="flex max-w-xl flex-col gap-3 sm:flex-row">
           <Input type="email" label="Test recipient" value={testRecipient}
             onChange={(event) => setTestRecipient(event.target.value)} />
-          <Button className="self-end" disabled={!testRecipient.includes('@') || testMutation.isPending}
+          <Button className="self-end" disabled={emailNotConfigured || !testRecipient.includes('@') || testMutation.isPending}
             onClick={() => {
               if (window.confirm(`Send a test email to ${testRecipient}?`)) testMutation.mutate(testRecipient);
             }}>
             {testMutation.isPending ? 'Sending…' : 'Send test'}
           </Button>
+          {emailNotConfigured && (
+            <p className="text-xs text-muted-foreground">
+              Test email is disabled: Gmail SMTP is not configured. Configure SMTP credentials and refresh.
+            </p>
+          )}
         </div>
         {testMutation.isSuccess && <p role="status" className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400"><CheckCircle2 className="h-4 w-4" /> Accepted by SMTP server.</p>}
         {testMutation.isError && <p role="alert" className="flex items-center gap-2 text-sm text-destructive"><ShieldAlert className="h-4 w-4" /> {requestError(testMutation.error)}</p>}

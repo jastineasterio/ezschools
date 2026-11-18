@@ -66,7 +66,7 @@ export function PlatformBrandingPage() {
   } = useQuery({
     queryKey: ['platform-school', schoolId],
     queryFn: async () => {
-      const response = await api.get<{ data: SchoolResponse }>(`/api/platform/schools/${schoolId}`);
+      const response = await api.get<{ data: SchoolResponse }>(`/platform/schools/${schoolId}`);
       return response.data.data;
     },
     enabled: Number.isFinite(schoolId),
@@ -81,7 +81,7 @@ export function PlatformBrandingPage() {
     queryKey: ['platform-school-branding', schoolId],
     queryFn: async () => {
       const response = await api.get<{ data: SchoolBrandingResponse }>(
-        `/api/platform/schools/${schoolId}/branding`,
+        `/platform/schools/${schoolId}/branding`,
       );
       return response.data.data;
     },
@@ -92,7 +92,7 @@ export function PlatformBrandingPage() {
     mutationFn: (req: UpdateBrandingRequest) =>
       api
         .put<{ data: SchoolBrandingResponse }>(
-          `/api/platform/schools/${schoolId}/branding`,
+          `/platform/schools/${schoolId}/branding`,
           req,
         )
         .then((r) => r.data.data),
@@ -111,7 +111,7 @@ export function PlatformBrandingPage() {
       formData.append('file', file);
       return api
         .post<{ data: SchoolBrandingResponse }>(
-          `/api/platform/schools/${schoolId}/branding/logo`,
+          `/platform/schools/${schoolId}/branding/logo`,
           formData,
         )
         .then((r) => r.data.data);
@@ -122,8 +122,8 @@ export function PlatformBrandingPage() {
       queryClient.invalidateQueries({ queryKey: ['platform-school-branding', schoolId] });
       setToast({ message: 'Logo uploaded successfully.', type: 'success' });
     },
-    onError: () => {
-      setToast({ message: 'Logo upload failed.', type: 'error' });
+    onError: (error) => {
+      setToast({ message: getApiErrorMessage(error, 'Logo upload failed.'), type: 'error' });
     },
   });
 
@@ -131,7 +131,7 @@ export function PlatformBrandingPage() {
     mutationFn: () =>
       api
         .delete<{ data: SchoolBrandingResponse }>(
-          `/api/platform/schools/${schoolId}/branding/logo`,
+          `/platform/schools/${schoolId}/branding/logo`,
         )
         .then((r) => r.data.data),
     onSuccess: () => {
@@ -151,7 +151,7 @@ export function PlatformBrandingPage() {
     mutationFn: () =>
       api
         .post<{ data: SchoolBrandingResponse }>(
-          `/api/platform/schools/${schoolId}/branding/reset`,
+          `/platform/schools/${schoolId}/branding/reset`,
         )
         .then((r) => r.data.data),
     onSuccess: (data) => {

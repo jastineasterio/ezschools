@@ -6,11 +6,60 @@ import org.springframework.web.client.RestClient;
 import java.util.List;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 @SuppressWarnings("rawtypes")
 class DarsmsProviderServiceTest {
+
+    private static RestClient.Builder builderStub() {
+        RestClient.Builder builder = mock(RestClient.Builder.class);
+        when(builder.requestFactory(any())).thenReturn(builder);
+        when(builder.build()).thenReturn(mock(RestClient.class));
+        return builder;
+    }
+
+    @Test
+    void isConfiguredWhenApiKeyAndSenderIdPresent() {
+        DarsmsProviderService provider = new DarsmsProviderService(
+                builderStub(), "api-key-123", "EDUMANGE", "https://dev.darsms.co.tz/api/v1");
+        assertTrue(provider.isConfigured());
+    }
+
+    @Test
+    void isConfiguredDoesNotRequireBaseUrl() {
+        DarsmsProviderService provider = new DarsmsProviderService(
+                builderStub(), "api-key-123", "EDUMANGE", "");
+        assertTrue(provider.isConfigured(), "base-url is optional and must not disable a working provider");
+    }
+
+    @Test
+    void isNotConfiguredWhenApiKeyMissing() {
+        DarsmsProviderService provider = new DarsmsProviderService(
+                builderStub(), "", "EDUMANGE", "https://dev.darsms.co.tz/api/v1");
+        assertFalse(provider.isConfigured());
+    }
+
+    @Test
+    void isNotConfiguredWhenSenderIdMissing() {
+        DarsmsProviderService provider = new DarsmsProviderService(
+                builderStub(), "api-key-123", "", "https://dev.darsms.co.tz/api/v1");
+        assertFalse(provider.isConfigured());
+    }
+
+    @Test
+    void isNotConfiguredWhenBothMissing() {
+        DarsmsProviderService provider = new DarsmsProviderService(
+                builderStub(), "", "", "https://dev.darsms.co.tz/api/v1");
+        assertFalse(provider.isConfigured());
+    }
 
     @Test
     void normalizesTanzanianPhones() {

@@ -131,7 +131,7 @@ export const platformItems: ShellMenuItem[] = [
   { to: '/platform/schools', icon: School, label: 'Schools' },
   { to: '/platform/packages', icon: Package, label: 'Packages' },
   { to: '/platform/subscriptions', icon: CreditCard, label: 'Subscriptions' },
-  { to: '/platform/users', icon: Users, label: 'Platform Users' },
+  { to: '/platform/users', icon: Users, label: 'Platform User Analytics' },
   { to: '/platform/audit-logs', icon: FileText, label: 'Audit Logs' },
   { to: '/platform/analytics', icon: BarChart3, label: 'Analytics' },
   { to: '/platform/settings', icon: Settings, label: 'Settings' },

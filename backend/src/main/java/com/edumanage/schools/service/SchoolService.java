@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.time.DateTimeException;
 import java.time.ZoneId;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 @Service
 public class SchoolService {
@@ -110,6 +112,15 @@ public class SchoolService {
             throw new ForbiddenException("Access denied");
         }
 
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("name", school.getName());
+        before.put("email", school.getEmail());
+        before.put("phone", school.getPhone());
+        before.put("address", school.getAddress());
+        before.put("region", school.getRegion());
+        before.put("district", school.getDistrict());
+        before.put("isActive", school.isActive());
+
         if (request.getName() != null) school.setName(request.getName());
         if (request.getEmail() != null) school.setEmail(request.getEmail());
         if (request.getPhone() != null) school.setPhone(request.getPhone());
@@ -120,8 +131,18 @@ public class SchoolService {
 
         schoolRepository.save(school);
 
-        auditLogService.log("SCHOOL_UPDATE", "School", school.getId(),
-                "Updated school " + school.getName(), null, null, null);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("name", school.getName());
+        after.put("email", school.getEmail());
+        after.put("phone", school.getPhone());
+        after.put("address", school.getAddress());
+        after.put("region", school.getRegion());
+        after.put("district", school.getDistrict());
+        after.put("isActive", school.isActive());
+
+        auditLogService.logWithResult("SCHOOL_UPDATE", "School", school.getId(),
+                "Updated school " + school.getName(), null, null, null,
+                "SUCCESS", before, after, school.getId());
 
         return enrichWithSubscriptionInfo(school, mapToDto(school, null, null, null),
                 countSchoolUsers(school.getId()));

@@ -46,7 +46,13 @@ public class CommunicationSettingsService {
         boolean global = settingEnabled("notifications.global.enabled", true);
         boolean sms = settingEnabled("sms.enabled", true);
         boolean email = settingEnabled("email.enabled", true);
-        return new NotificationChannelsDto(global, sms, darsmsProvider.isConfigured(),
+        // DARSMS readiness reflects the real provider configuration: either the global
+        // environment credentials (app.notifications.sms.api-key / sender-id) or at
+        // least one school's active DARSMS SMS configuration stored in the database.
+        // Base URL is optional (defaults in application.yml) and is never treated as a
+        // required readiness condition.
+        boolean darsmsConfigured = darsmsProvider.isConfigured() || smsConfigurationService.hasAnyConfiguredSchool();
+        return new NotificationChannelsDto(global, sms, darsmsConfigured,
                 email, emailProvider.isConfigured());
     }
 

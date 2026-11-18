@@ -21,7 +21,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -88,6 +90,15 @@ public class PackageService {
         var pkg = packageRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Package not found"));
 
+        Map<String, Object> before = new LinkedHashMap<>();
+        before.put("displayName", pkg.getDisplayName());
+        before.put("description", pkg.getDescription());
+        before.put("price", pkg.getPrice());
+        before.put("billingPeriod", pkg.getBillingPeriod());
+        before.put("isActive", pkg.isActive());
+        before.put("isDefault", pkg.isDefault());
+        before.put("sortOrder", pkg.getSortOrder());
+
         pkg.setDisplayName(request.getDisplayName());
         pkg.setDescription(request.getDescription());
         pkg.setPrice(request.getPrice());
@@ -98,8 +109,18 @@ public class PackageService {
 
         packageRepository.save(pkg);
 
-        auditLogService.log("PACKAGE_UPDATE", "Package", pkg.getId(),
-                "Updated package " + pkg.getName(), null, null, null);
+        Map<String, Object> after = new LinkedHashMap<>();
+        after.put("displayName", pkg.getDisplayName());
+        after.put("description", pkg.getDescription());
+        after.put("price", pkg.getPrice());
+        after.put("billingPeriod", pkg.getBillingPeriod());
+        after.put("isActive", pkg.isActive());
+        after.put("isDefault", pkg.isDefault());
+        after.put("sortOrder", pkg.getSortOrder());
+
+        auditLogService.logWithResult("PACKAGE_UPDATE", "Package", pkg.getId(),
+                "Updated package " + pkg.getName(), null, null, null,
+                "SUCCESS", before, after, null);
 
         return mapToDto(pkg);
     }

@@ -1,15 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from 'react-router-dom';
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
   School,
@@ -19,7 +12,7 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { getApiErrorMessage } from '@/services/api';
-import { getPlatformDashboard } from '@/services/dashboards';
+import { getPlatformDashboard, getPlatformSchools } from '@/services/dashboards';
 import { Card } from '@/components/ui/Card';
 import { Badge } from '@/components/ui/Badge';
 import { Skeleton } from '@/components/ui/Skeleton';
@@ -37,7 +30,14 @@ export function PlatformDashboardPage() {
     queryFn: getPlatformDashboard,
   });
 
-  if (isLoading) {
+  const { data: schoolsPage, isLoading: schoolsLoading } = useQuery({
+    queryKey: ['platform-schools'],
+    queryFn: () => getPlatformSchools(0, 10),
+  });
+
+  const loading = isLoading || schoolsLoading;
+
+  if (loading) {
     return (
       <div className="page space-y-6">
         <div className="page-header">
@@ -102,21 +102,21 @@ export function PlatformDashboardPage() {
       value: data.activeSchools,
       icon: TrendingUp,
       tone: 'success' as const,
-      hint: 'Currently active and subscribed',
+      hint: 'Active and not suspended schools',
     },
     {
       label: 'Suspended Schools',
       value: data.suspendedSchools,
       icon: AlertTriangle,
       tone: 'destructive' as const,
-      hint: 'Suspended or inactive schools',
+      hint: 'Suspended schools',
     },
     {
       label: 'Total Users',
       value: data.totalUsers,
       icon: Users,
       tone: 'info' as const,
-      hint: 'Platform users across all schools',
+      hint: 'School-associated users (excludes platform-only admins)',
     },
     {
       label: 'Active Subscriptions',
@@ -130,6 +130,7 @@ export function PlatformDashboardPage() {
   const packageData = data.packageDistribution ?? [];
   const recentSchools = data.recentSchools ?? [];
   const recentAuditLogs = data.recentAuditLogs ?? [];
+  const allSchools = schoolsPage?.content ?? [];
 
   return (
     <div className="page space-y-6">
@@ -256,7 +257,7 @@ export function PlatformDashboardPage() {
                   {recentAuditLogs.map((log) => (
                     <TableRow key={log.id}>
                       <TableCell className="whitespace-nowrap">
-                        {log.actorEmail ?? 'System'}
+                        {log.actorName ?? 'System'}
                       </TableCell>
                       <TableCell>{log.action}</TableCell>
                       <TableCell>{log.entityType ?? '—'}</TableCell>
@@ -270,62 +271,66 @@ export function PlatformDashboardPage() {
             </div>
           )}
         </SectionCard>
-      </div>
 
-      <SectionCard
-        title="All Schools"
-        description="Complete list of schools registered on the platform"
-        action={
-          <Badge variant="secondary">{formatNumber(data.totalSchools)} total</Badge>
-        }
-      >
-        {recentSchools.length === 0 ? (
-          <EmptyState title="No schools" description="No schools registered yet." />
-        ) : (
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>School</TableHead>
-                  <TableHead>Package</TableHead>
-                  <TableHead className="text-right">Users</TableHead>
-                  <TableHead className="text-center">Status</TableHead>
-                  <TableHead className="text-right">Created</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentSchools.map((school) => (
-                  <TableRow key={school.id}>
-                    <TableCell className="font-medium whitespace-nowrap">
-                      {school.name}
-                    </TableCell>
-                    <TableCell>{school.packageName ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums">
-                      {formatNumber(school.userCount ?? 0)}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <Badge
-                        variant={
-                          school.isSuspended
-                            ? 'destructive'
-                            : school.isActive
-                              ? 'success'
-                              : 'secondary'
-                        }
-                      >
-                        {school.isSuspended ? 'Suspended' : school.isActive ? 'Active' : 'Inactive'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap text-right">
-                      {formatDate(school.createdAt)}
-                    </TableCell>
+        <SectionCard
+          title="All Schools"
+          description="Complete list of schools registered on the platform"
+          action={
+            <Link to="/platform/schools">
+              <Badge variant="secondary">View all {formatNumber(data.totalSchools)} schools</Badge>
+            </Link>
+          }
+        >
+          {schoolsLoading ? (
+            <div className="h-48"><Skeleton className="h-full w-full" /></div>
+          ) : allSchools.length === 0 ? (
+            <EmptyState title="No schools" description="No schools registered yet." />
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>School</TableHead>
+                    <TableHead>Package</TableHead>
+                    <TableHead className="text-right">Users</TableHead>
+                    <TableHead className="text-center">Status</TableHead>
+                    <TableHead className="text-right">Created</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-        )}
-      </SectionCard>
+                </TableHeader>
+                <TableBody>
+                  {allSchools.map((school) => (
+                    <TableRow key={school.id}>
+                      <TableCell className="font-medium whitespace-nowrap">
+                        <Link to={`/platform/schools/${school.id}`}>{school.name}</Link>
+                      </TableCell>
+                      <TableCell>{school.packageName ?? '—'}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {formatNumber(school.userCount ?? 0)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant={
+                            school.isSuspended
+                              ? 'destructive'
+                              : school.isActive
+                                ? 'success'
+                                : 'secondary'
+                          }
+                        >
+                          {school.isSuspended ? 'Suspended' : school.isActive ? 'Active' : 'Inactive'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right">
+                        {formatDate(school.createdAt)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </SectionCard>
+      </div>
     </div>
   );
 }

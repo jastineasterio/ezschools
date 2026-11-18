@@ -15,6 +15,7 @@ import com.edumanage.schools.entity.School;
 import com.edumanage.sms.repository.SmsConfigurationRepository;
 import com.edumanage.tenant.TenantContext;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -80,6 +81,19 @@ public class SmsConfigurationService {
                 .map(config -> config.getEncryptedApiKey() != null && !config.getEncryptedApiKey().isBlank()
                         && config.getSenderId() != null && !config.getSenderId().isBlank())
                 .orElse(false);
+    }
+
+    /**
+     * Returns true if any school has an active, non-deleted DARSMS SMS configuration
+     * with an encrypted API key and a sender ID present. This is the same required
+     * configuration the real DarsmsProviderService needs to send SMS. Never decrypts
+     * or exposes any secret.
+     */
+    public boolean hasAnyConfiguredSchool() {
+        return smsConfigurationRepository.findByDeletedAtIsNull(PageRequest.of(0, 1000)).stream()
+                .filter(SmsConfiguration::isActive)
+                .anyMatch(config -> config.getEncryptedApiKey() != null && !config.getEncryptedApiKey().isBlank()
+                        && config.getSenderId() != null && !config.getSenderId().isBlank());
     }
 
     /**

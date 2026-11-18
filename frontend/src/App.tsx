@@ -8,7 +8,7 @@ import { SchoolFormPage } from '@/pages/SchoolFormPage';
 import { PackagesPage } from '@/pages/PackagesPage';
 import { PackageFormPage } from '@/pages/PackageFormPage';
 import { SubscriptionsPage } from '@/pages/SubscriptionsPage';
-import { PlatformUsersPage } from '@/pages/PlatformUsersPage';
+import { PlatformUserAnalyticsPage } from '@/pages/PlatformUserAnalytics';
 import { AuditLogsPage } from '@/pages/AuditLogsPage';
 import { PlatformSettingsPage } from '@/pages/PlatformSettingsPage';
 import { PlatformSmsConfigurationsPage } from '@/pages/PlatformSmsConfigurationsPage';
@@ -105,7 +105,7 @@ export function App() {
           <Route path="packages/new" element={<PackageFormPage />} />
           <Route path="packages/:id/edit" element={<PackageFormPage />} />
           <Route path="subscriptions" element={<SubscriptionsPage />} />
-          <Route path="users" element={<PlatformUsersPage />} />
+          <Route path="users" element={<PlatformUserAnalyticsPage />} />
           <Route path="audit-logs" element={<AuditLogsPage />} />
           <Route path="analytics" element={<PlatformAnalyticsPage />} />
           <Route path="settings" element={<PlatformSettingsPage />} />

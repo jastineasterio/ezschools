@@ -24,6 +24,12 @@ public interface SchoolRepository extends JpaRepository<School, Long> {
     long countByIsActive(boolean isActive);
     long countByIsSuspended(boolean isSuspended);
 
+    @Query("SELECT COUNT(s) FROM School s WHERE s.isActive = true AND s.isSuspended = false")
+    long countActiveNonSuspended();
+
+    @Query("SELECT s FROM School s ORDER BY s.createdAt DESC")
+    List<School> findNewest(Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select school from School school where school.id = :id")
     Optional<School> findByIdForUpdate(@Param("id") Long id);

@@ -1,10 +1,13 @@
 package com.edumanage.platform.dto;
 
+import com.edumanage.audit.dto.RecentAuditLogDto;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -16,8 +19,8 @@ public class PlatformDashboardDto {
     private long totalUsers;
     private long activeSubscriptions;
     private List<PackageDistribution> packageDistribution;
-    private List<Object> recentSchools;
-    private List<Object> recentAuditLogs;
+    private List<RecentSchoolDto> recentSchools;
+    private List<RecentAuditLogDto> recentAuditLogs;
 
     @Data
     @NoArgsConstructor
@@ -25,5 +28,20 @@ public class PlatformDashboardDto {
     public static class PackageDistribution {
         private String name;
         private long count;
+    }
+
+    @Data
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RecentSchoolDto {
+        private Long id;
+        private String uuid;
+        private String name;
+        private String registrationNumber;
+        private boolean isActive;
+        private boolean isSuspended;
+        private LocalDateTime createdAt;
+        private long userCount;
+        private String packageName;
     }
 }

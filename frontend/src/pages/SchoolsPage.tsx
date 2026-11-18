@@ -197,7 +197,7 @@ export function SchoolsPage() {
         </div>
       ) : (
         <>
-          <div className="rounded-xl border overflow-hidden">
+            <div className="rounded-xl border">
             <Table>
               <TableHeader>
                 <TableRow>

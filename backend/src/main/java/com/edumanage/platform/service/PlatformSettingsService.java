@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Service
@@ -47,6 +48,9 @@ public class PlatformSettingsService {
 
     @Transactional
     public PlatformSettingsDto updateSettings(Map<String, Object> updates) {
+        Map<String, Object> before = new LinkedHashMap<>();
+        platformSettingsRepository.findAll().forEach(s -> before.put(s.getSettingKey(), parseValue(s.getSettingValue())));
+
         updates.forEach((key, value) -> {
             PlatformSettings setting = platformSettingsRepository.findBySettingKey(key)
                     .orElseGet(() -> {
@@ -58,8 +62,12 @@ public class PlatformSettingsService {
             platformSettingsRepository.save(setting);
         });
 
-        auditLogService.log("PLATFORM_SETTINGS_UPDATE", "PlatformSettings", null,
-                "Updated platform notification settings", null, null, null);
+        Map<String, Object> after = new LinkedHashMap<>();
+        platformSettingsRepository.findAll().forEach(s -> after.put(s.getSettingKey(), parseValue(s.getSettingValue())));
+
+        auditLogService.logWithResult("PLATFORM_SETTINGS_UPDATE", "PlatformSettings", null,
+                "Updated platform settings", null, null, null,
+                "SUCCESS", before, after, null);
 
         return getSettings();
     }

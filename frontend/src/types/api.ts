@@ -229,16 +229,150 @@ export interface UpdateBrandingRequest {
 export interface AuditLogResponse {
   id: number;
   actorUserId: number | null;
-  actorEmail?: string;
+  actorName?: string | null;
+  actorRole?: string | null;
   schoolId: number | null;
-  schoolName?: string;
+  schoolName?: string | null;
   action: string;
   entityType: string | null;
   entityId: number | null;
   description: string;
+  result: string | null;
   ipAddress: string | null;
   userAgent: string | null;
   metadata: Record<string, unknown> | null;
+  beforeChanges: Record<string, unknown> | null;
+  afterChanges: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface AuditOverview {
+  totalEvents: number;
+  successful: number;
+  failed: number;
+  uniqueActors: number;
+  securityEvents: number;
+}
+
+export interface AuditFilters {
+  page: number;
+  size: number;
+  search?: string;
+  action?: string;
+  entityType?: string;
+  result?: string;
+  actor?: number | null;
+  school?: number | null;
+  start?: string;
+  end?: string;
+}
+
+export interface RoleDistributionDto {
+  role: string;
+  displayName: string;
+  userCount: number;
+  percent: number;
+}
+
+export interface ActiveInactiveDto {
+  status: string;
+  count: number;
+  percent: number;
+}
+
+export interface SchoolUserDistributionDto {
+  schoolId: number;
+  schoolName: string;
+  totalUsers: number;
+  managers: number;
+  teachers: number;
+  students: number;
+  parents: number;
+  accountants: number;
+  hods: number;
+  librarians: number;
+  wardens: number;
+  transportOfficers: number;
+  otherRoles: number;
+  activeUsers: number;
+  inactiveUsers: number;
+}
+
+export interface PackageUserDistributionDto {
+  packageId: number | null;
+  packageName: string;
+  displayName: string;
+  unassigned: boolean;
+  schoolCount: number;
+  totalUsers: number;
+  averageUsersPerSchool: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  roleDistribution: Record<string, number>;
+}
+
+export interface TrendDto {
+  period: string;
+  userCount: number;
+  newUsers: number;
+}
+
+export interface UserOverviewDto {
+  totalUsers: number;
+  activeUsers: number;
+  inactiveUsers: number;
+  deletedUsers: number;
+  totalSchools: number;
+  averageUsersPerSchool: number;
+  newUsersPeriod: number;
+  growthPercent: number | null;
+  periodStart: string;
+  periodEnd: string;
+  roleDistribution: RoleDistributionDto[];
+  statusDistribution: ActiveInactiveDto[];
+}
+
+export interface AnalyticsFilters {
+  start: string;
+  end: string;
+  school?: string;
+  package?: string;
+  role?: string;
+  status?: string;
+}
+
+export interface AuditChartPoint {
+  period: string;
+  count: number;
+}
+
+export interface AuditDistributionItem {
+  name: string;
+  count: number;
+}
+
+export interface RecentSchoolDto {
+  id: number;
+  uuid: string;
+  name: string;
+  registrationNumber: string | null;
+  isActive: boolean;
+  isSuspended: boolean;
+  createdAt: string;
+  userCount: number;
+  packageName: string | null;
+}
+
+export interface RecentAuditLogDto {
+  id: number;
+  actorUserId: number | null;
+  actorName: string | null;
+  actorRole: string | null;
+  schoolId: number | null;
+  action: string;
+  entityType: string | null;
+  entityId: number | null;
+  result: string | null;
   createdAt: string;
 }
 
@@ -249,8 +383,8 @@ export interface PlatformDashboardResponse {
   totalUsers: number;
   activeSubscriptions: number;
   packageDistribution: { name: string; count: number }[];
-  recentSchools: SchoolResponse[];
-  recentAuditLogs: AuditLogResponse[];
+  recentSchools: RecentSchoolDto[];
+  recentAuditLogs: RecentAuditLogDto[];
 }
 
 export interface RoleResponse {

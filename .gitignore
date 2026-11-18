@@ -28,3 +28,14 @@ frontend/build/
 # Local backups: keep outside source control
 /backup-manager-fix-20261016-071326/
 /backup-platform-users-20261016-063548/
+
+# Local repair scripts and backups
+/fix*.py
+/bcryptgen/
+/backend/data/
+/backend/run.ps1.backup-*
+/frontend/backup-*/
+/frontend/src/pages/*.backup-*
+
+# TypeScript build cache
+/frontend/tsconfig.tsbuildinfo

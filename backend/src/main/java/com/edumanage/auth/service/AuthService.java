@@ -57,42 +57,63 @@ public class AuthService {
 
     @Transactional
     public LoginResponse login(LoginRequest request, HttpServletRequest httpRequest) {
-        var user = userRepository.findWithRolesByEmail(request.getEmail())
-                .filter(u -> !u.isDeleted())
-                .orElseThrow(() -> new BadRequestException("Invalid email or password"));
+        String email = request.getEmail();
+        User user = null;
+        try {
+            user = userRepository.findWithRolesByEmail(email)
+                    .filter(u -> !u.isDeleted())
+                    .orElse(null);
 
-        if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
-            throw new BadRequestException("Invalid email or password");
+            if (user == null) {
+                auditLogService.logWithActor("LOGIN_FAILURE", "Auth", null,
+                        "Login failed: user not found for email " + email,
+                        httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null,
+                        "FAILURE", null, email, null, null);
+                throw new BadRequestException("Invalid email or password");
+            }
+
+            if (!passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
+                auditLogService.logWithActor("LOGIN_FAILURE", "Auth", user.getId(),
+                        "Login failed: invalid password for " + user.getEmail(),
+                        httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null,
+                        "FAILURE", user.getId(),
+                        (user.getFirstName() == null ? "" : user.getFirstName()) + " "
+                                + (user.getLastName() == null ? "" : user.getLastName()),
+                        null, user.getSchoolId());
+                throw new BadRequestException("Invalid email or password");
+            }
+
+            var roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
+            var userDetails = CustomUserDetails.from(user, roles);
+            var accessToken = jwtService.generateAccessToken(userDetails, user.getId(), user.getSchoolId(), roles);
+            var refreshTokenStr = jwtService.generateRefreshToken(userDetails);
+
+            RefreshToken refreshToken = new RefreshToken();
+            refreshToken.setUser(user);
+            refreshToken.setToken(refreshTokenStr);
+            refreshToken.setExpiresAt(LocalDateTime.now().plusSeconds(7 * 24 * 60 * 60));
+            refreshTokenRepository.save(refreshToken);
+
+            user.setLastLogin(LocalDateTime.now());
+            userRepository.save(user);
+
+            auditLogService.log("LOGIN", "Auth", user.getId(), "User logged in",
+                    httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null);
+
+            return new LoginResponse(
+                    accessToken,
+                    refreshTokenStr,
+                    "Bearer",
+                    900L,
+                    user.getId(),
+                    user.getEmail(),
+                    user.getFirstName(),
+                    user.getLastName(),
+                    user.getSchoolId() != null ? String.valueOf(user.getSchoolId()) : null
+            );
+        } catch (BadRequestException e) {
+            throw e;
         }
-
-        var roles = user.getRoles().stream().map(Role::getName).collect(Collectors.toList());
-        var userDetails = CustomUserDetails.from(user, roles);
-        var accessToken = jwtService.generateAccessToken(userDetails, user.getId(), user.getSchoolId(), roles);
-        var refreshTokenStr = jwtService.generateRefreshToken(userDetails);
-
-        RefreshToken refreshToken = new RefreshToken();
-        refreshToken.setUser(user);
-        refreshToken.setToken(refreshTokenStr);
-        refreshToken.setExpiresAt(LocalDateTime.now().plusSeconds(7 * 24 * 60 * 60));
-        refreshTokenRepository.save(refreshToken);
-
-        user.setLastLogin(LocalDateTime.now());
-        userRepository.save(user);
-
-        auditLogService.log("LOGIN", "Auth", user.getId(), "User logged in",
-                httpRequest.getRemoteAddr(), httpRequest.getHeader("User-Agent"), null);
-
-        return new LoginResponse(
-                accessToken,
-                refreshTokenStr,
-                "Bearer",
-                900L,
-                user.getId(),
-                user.getEmail(),
-                user.getFirstName(),
-                user.getLastName(),
-                user.getSchoolId() != null ? String.valueOf(user.getSchoolId()) : null
-        );
     }
 
     @Transactional
@@ -143,6 +164,9 @@ public class AuthService {
                 .filter(u -> !u.isDeleted())
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
         if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPasswordHash())) {
+            auditLogService.log("PASSWORD_CHANGE_FAILURE", "Auth", user.getId(),
+                    "Password change failed: current password incorrect for " + user.getEmail(),
+                    null, null, null);
             throw new ForbiddenException("Current password is incorrect");
         }
         if (!request.getNewPassword().equals(request.getConfirmPassword())) {
@@ -151,6 +175,9 @@ public class AuthService {
 
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
+
+        auditLogService.log("PASSWORD_CHANGE", "Auth", user.getId(),
+                "Password changed for " + user.getEmail(), null, null, null);
     }
 
     @Transactional(readOnly = true)

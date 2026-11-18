@@ -124,7 +124,7 @@ public class GlobalExceptionHandler {
             case "SMS_PROVIDER_RATE_LIMITED" -> HttpStatus.TOO_MANY_REQUESTS;
             case "SMS_PROVIDER_UNAVAILABLE", "SMS_PROVIDER_REJECTED", "SMS_PROVIDER_INVALID_RESPONSE" ->
                     HttpStatus.BAD_GATEWAY;
-            case "SMS_NOT_CONFIGURED", "INVALID_PHONE", "INVALID_QUANTITY", "INVALID_PAYER_PHONE" ->
+            case "SMS_NOT_CONFIGURED", "EMAIL_NOT_CONFIGURED", "INVALID_PHONE", "INVALID_QUANTITY", "INVALID_PAYER_PHONE" ->
                     HttpStatus.BAD_REQUEST;
             default -> HttpStatus.INTERNAL_SERVER_ERROR;
         };

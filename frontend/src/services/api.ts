@@ -76,9 +76,6 @@ export function getApiErrorMessage(error: unknown, fallback: string): string {
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 });
 
 api.interceptors.request.use(
